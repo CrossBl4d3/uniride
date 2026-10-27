@@ -1,6 +1,4 @@
-// app/_layout.tsx
-// The root layout wraps every screen. We load fonts here so no screen
-// ever renders in the wrong typeface.
+// src/app/_layout.tsx
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import * as SplashScreen from 'expo-splash-screen';
@@ -15,7 +13,15 @@ import {
 import { KonkhmerSleokchher_400Regular } from '@expo-google-fonts/konkhmer-sleokchher';
 import { colors } from '../theme';
 
-SplashScreen.preventAutoHideAsync(); // keep the splash up until fonts are ready
+SplashScreen.preventAutoHideAsync();
+
+// Screens with a × close button: they slide up from the bottom,
+// and you can swipe down to dismiss them (on iPhone).
+const slideUp = {
+  animation: 'slide_from_bottom',
+  gestureEnabled: true,
+  gestureDirection: 'vertical',
+} as const;
 
 export default function RootLayout() {
   const [loaded] = useFonts({
@@ -37,10 +43,14 @@ export default function RootLayout() {
       <StatusBar style="light" />
       <Stack
         screenOptions={{
-          headerShown: false, // every UniRide screen draws its own header
+          headerShown: false,
           contentStyle: { backgroundColor: colors.bg.screen },
         }}
-      />
+      >
+        {/* Every other screen keeps the default side slide. */}
+        <Stack.Screen name="campus" options={slideUp} />
+        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+      </Stack>
     </>
   );
 }

@@ -1,6 +1,8 @@
-// src/app/(tabs)/home.tsx — 09 Home
-import { useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
+// src/app/(tabs)/home.tsx — 09 Home (the sheet grows into 10 Plan route)
+import { useEffect, useRef, useState } from 'react';
+import {
+  View, Text, Pressable, StyleSheet, Alert, Animated, Easing, BackHandler, Keyboard, useWindowDimensions,
+} from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { router } from 'expo-router';
@@ -9,11 +11,17 @@ import { Icon } from '../../components/Icon';
 import { Chip } from '../../components/Chip';
 import { ListRow } from '../../components/ListRow';
 import { RiderMarker, VehicleMarker } from '../../components/MapMarkers';
+import { PlanRoutePanel } from '../../components/PlanRoutePanel';
+import { useTabBarHeight } from '../../components/TabBar';
 import { campuses } from '../../data/campuses';
-import { recentPlaces } from '../../data/places';
+import { recentPlaces, savedPlaces, Place } from '../../data/places';
 import { useUser } from '../../store/useUser';
+import { useBooking } from '../../store/useBooking';
+import { useUI } from '../../store/useUI';
 import { darkMapStyle } from '../../theme/mapStyle';
 import { colors, space, radius, type } from '../../theme';
+
+const DURATION = 320; // ms, same as the tab bar so they move together
 
 function greeting() {
   const hour = new Date().getHours();
@@ -24,29 +32,71 @@ function greeting() {
 
 export default function Home() {
   const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
+  const tabBarHeight = useTabBarHeight();
+
   const firstName = useUser((s) => s.firstName);
   const campusId = useUser((s) => s.campusId);
-  const mapRef = useRef<MapView>(null); // a handle to the real map, so we can move its camera
+  const setDestination = useBooking((s) => s.setDestination);
+  const expanded = useUI((s) => s.sheetExpanded);
+  const setExpanded = useUI((s) => s.setSheetExpanded);
+
+  const mapRef = useRef<MapView>(null);
+  const [collapsedHeight, setCollapsedHeight] = useState(420);
+  const [showPanel, setShowPanel] = useState(false);
+  const [prefill, setPrefill] = useState('');
+
+  // 0 = sheet collapsed, 1 = sheet covering the whole screen
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!expanded) Keyboard.dismiss(); // close the keyboard as the sheet starts to shrink
+    if (expanded) setShowPanel(true);  // mount Plan route as we start growing
+    Animated.timing(progress, {
+      toValue: expanded ? 1 : 0,
+      duration: DURATION,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished && !expanded) setShowPanel(false); // unmount once fully collapsed
+    });
+  }, [expanded, progress]);
+
+  // Android back button: collapse the sheet instead of leaving Home.
+  useEffect(() => {
+    if (!expanded) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setExpanded(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [expanded, setExpanded]);
+
+  // If Home ever unmounts while expanded, make sure the tab bar comes back.
+  useEffect(() => () => setExpanded(false), [setExpanded]);
+
+  const openPlanner = (place?: Place) => {
+    if (place) setDestination(place);
+    setPrefill(place?.name ?? '');
+    setExpanded(true);
+  };
 
   const campus = campuses.find((c) => c.id === campusId) ?? campuses[0];
   const { latitude, longitude } = campus;
-
-  // The area we want on screen: about 2km of campus, centre nudged down
-  // so the rider dot sits above the sheet.
-  const region: Region = {
-    latitude: latitude - 0.004,
-    longitude,
-    latitudeDelta: 0.02,
-    longitudeDelta: 0.02,
-  };
-
+  const region: Region = { latitude: latitude - 0.004, longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 };
   const vehicles = [
     { id: 'k1', latitude: latitude + 0.0012, longitude: longitude + 0.0018 },
     { id: 'k2', latitude: latitude - 0.002, longitude: longitude - 0.0005 },
     { id: 'k3', latitude: latitude - 0.0016, longitude: longitude - 0.0035 },
   ];
 
-  const comingNext = () => router.push('/booking/plan');
+  // Everything the animation drives, all derived from `progress`
+  const sheetY = progress.interpolate({
+    inputRange: [0, 1],
+    outputRange: [screenHeight - collapsedHeight, 0],
+  });
+  const homeContentOpacity = progress.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0], extrapolate: 'clamp' });
+  const panelOpacity = progress.interpolate({ inputRange: [0.5, 1], outputRange: [0, 1], extrapolate: 'clamp' });
 
   return (
     <View style={styles.screen}>
@@ -55,8 +105,6 @@ export default function Home() {
         key={campus.id}
         style={StyleSheet.absoluteFill}
         initialRegion={region}
-        // initialRegion can be ignored on iPhone, so once the map is ready we
-        // move the camera there ourselves (0 = jump instantly, no animation).
         onMapReady={() => mapRef.current?.animateToRegion(region, 0)}
         userInterfaceStyle="dark"
         customMapStyle={darkMapStyle}
@@ -100,36 +148,57 @@ export default function Home() {
         </Pressable>
       </View>
 
-      <View style={styles.sheet}>
-        <View style={styles.handle} />
-        <Text style={styles.sheetTitle}>Where are you going?</Text>
+      {/* Fades in behind the growing sheet so its rounded corners never show the map */}
+      <Animated.View pointerEvents="none" style={[styles.backdrop, { opacity: progress }]} />
 
-        <Pressable style={styles.fakeField} onPress={comingNext}>
-          <Icon name="search" color={colors.icon.muted} />
-          <Text style={styles.placeholder}>Search destination</Text>
-          <Icon name="clock" color={colors.icon.muted} />
-        </Pressable>
+      {/* The sheet is always full-screen height; we slide it so only its top shows */}
+      <Animated.View style={[styles.sheet, { height: screenHeight, transform: [{ translateY: sheetY }] }]}>
+        <Animated.View
+          onLayout={(e) => setCollapsedHeight(e.nativeEvent.layout.height)}
+          pointerEvents={expanded ? 'none' : 'auto'}
+          style={[styles.collapsed, { paddingBottom: tabBarHeight + space.lg, opacity: homeContentOpacity }]}
+        >
+          <View style={styles.handle} />
+          <Text style={styles.sheetTitle}>Where are you going?</Text>
 
-        <View style={styles.chips}>
-          <Pressable onPress={comingNext}><Chip icon="home" label="Hall" /></Pressable>
-          <Pressable onPress={comingNext}><Chip icon="school" label="Faculty" /></Pressable>
-          <Pressable onPress={comingNext}><Chip icon="plus" label="Add place" /></Pressable>
-        </View>
+          <Pressable style={styles.fakeField} onPress={() => openPlanner()}>
+            <Icon name="search" color={colors.icon.muted} />
+            <Text style={styles.placeholder}>Search destination</Text>
+            <Icon name="clock" color={colors.icon.muted} />
+          </Pressable>
 
-        <View>
-          {recentPlaces.slice(0, 2).map((p, i) => (
-            <ListRow
-              key={p.id}
-              icon="clock"
-              title={p.name}
-              subtitle={p.area}
-              trailingText={p.distance}
-              divider={i === 0}
-              onPress={comingNext}
-            />
-          ))}
-        </View>
-      </View>
+          <View style={styles.chips}>
+            {savedPlaces.map((s) => (
+              <Pressable key={s.label} onPress={() => openPlanner(s.place)}>
+                <Chip icon={s.icon} label={s.label} />
+              </Pressable>
+            ))}
+            <Pressable onPress={() => Alert.alert('Add place', 'Saving places comes later.')}>
+              <Chip icon="plus" label="Add place" />
+            </Pressable>
+          </View>
+
+          <View>
+            {recentPlaces.slice(0, 2).map((p, i) => (
+              <ListRow
+                key={p.id}
+                icon="clock"
+                title={p.name}
+                subtitle={p.area}
+                trailingText={p.distance}
+                divider={i === 0}
+                onPress={() => openPlanner(p)}
+              />
+            ))}
+          </View>
+        </Animated.View>
+
+        {showPanel && (
+          <Animated.View style={[styles.panel, { opacity: panelOpacity }]}>
+            <PlanRoutePanel initialQuery={prefill} onClose={() => setExpanded(false)} />
+          </Animated.View>
+        )}
+      </Animated.View>
     </View>
   );
 }
@@ -157,18 +226,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  sheet: {
+  backdrop: {
     position: 'absolute',
+    top: 0,
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: colors.bg.screen,
+  },
+  sheet: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     backgroundColor: colors.bg.surface,
     borderTopLeftRadius: radius.xl,
     borderTopRightRadius: radius.xl,
-    paddingHorizontal: space.xl,
-    paddingBottom: space.lg,
-    gap: space.lg,
+    overflow: 'hidden',
   },
+  collapsed: { paddingHorizontal: space.xl, gap: space.lg },
+  panel: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 },
   handle: {
     alignSelf: 'center',
     width: 40,
