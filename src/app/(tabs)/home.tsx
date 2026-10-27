@@ -1,6 +1,7 @@
 // src/app/(tabs)/home.tsx — 09 Home
+import { useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Alert } from 'react-native';
-import MapView, { Marker } from 'react-native-maps';
+import MapView, { Marker, Region } from 'react-native-maps';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,33 +26,40 @@ export default function Home() {
   const insets = useSafeAreaInsets();
   const firstName = useUser((s) => s.firstName);
   const campusId = useUser((s) => s.campusId);
+  const mapRef = useRef<MapView>(null); // a handle to the real map, so we can move its camera
 
-  // Fall back to UI if no campus was picked (e.g. while testing).
   const campus = campuses.find((c) => c.id === campusId) ?? campuses[0];
   const { latitude, longitude } = campus;
 
-  // Pretend drivers near the campus centre. Later these come live from the backend.
+  // The area we want on screen: about 2km of campus, centre nudged down
+  // so the rider dot sits above the sheet.
+  const region: Region = {
+    latitude: latitude - 0.004,
+    longitude,
+    latitudeDelta: 0.02,
+    longitudeDelta: 0.02,
+  };
+
   const vehicles = [
     { id: 'k1', latitude: latitude + 0.0012, longitude: longitude + 0.0018 },
     { id: 'k2', latitude: latitude - 0.002, longitude: longitude - 0.0005 },
     { id: 'k3', latitude: latitude - 0.0016, longitude: longitude - 0.0035 },
   ];
 
-  const comingNext = () => Alert.alert('Next up', 'Plan your route comes next!');
+  const comingNext = () => router.push('/booking/plan');
 
   return (
     <View style={styles.screen}>
       <MapView
-        key={campus.id} // a new campus = a fresh map centred on it
+        ref={mapRef}
+        key={campus.id}
         style={StyleSheet.absoluteFill}
-        initialRegion={{
-          latitude: latitude - 0.004, // nudge the centre down so "you" sit above the sheet
-          longitude,
-          latitudeDelta: 0.02, // how much map fits on screen (smaller = more zoomed in)
-          longitudeDelta: 0.02,
-        }}
-        userInterfaceStyle="dark"    // iPhone: Apple Maps dark mode
-        customMapStyle={darkMapStyle} // Android: our green style
+        initialRegion={region}
+        // initialRegion can be ignored on iPhone, so once the map is ready we
+        // move the camera there ourselves (0 = jump instantly, no animation).
+        onMapReady={() => mapRef.current?.animateToRegion(region, 0)}
+        userInterfaceStyle="dark"
+        customMapStyle={darkMapStyle}
         showsPointsOfInterest={false}
         showsCompass={false}
         toolbarEnabled={false}
@@ -66,7 +74,6 @@ export default function Home() {
         ))}
       </MapView>
 
-      {/* Dark fade at the top so the greeting stays readable over any map */}
       <Svg style={styles.scrim} pointerEvents="none">
         <Defs>
           <LinearGradient id="scrim" x1="0" y1="0" x2="0" y2="1">
@@ -97,7 +104,6 @@ export default function Home() {
         <View style={styles.handle} />
         <Text style={styles.sheetTitle}>Where are you going?</Text>
 
-        {/* Looks like a text field, but it's a button that opens the full search screen */}
         <Pressable style={styles.fakeField} onPress={comingNext}>
           <Icon name="search" color={colors.icon.muted} />
           <Text style={styles.placeholder}>Search destination</Text>
