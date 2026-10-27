@@ -4,7 +4,7 @@ export type LatLng = { latitude: number; longitude: number };
 
 // Straight-line distance between two points on Earth, in km ("haversine" formula).
 export function distanceKm(a: LatLng, b: LatLng) {
-  const R = 6371; // Earth's radius in km
+  const R = 6371;
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.latitude - a.latitude);
   const dLon = toRad(b.longitude - a.longitude);
@@ -16,7 +16,6 @@ export function distanceKm(a: LatLng, b: LatLng) {
 
 // Two straight legs at a right angle, like turning one corner on campus roads.
 // If `end` is given (a dropped pin), the route goes exactly there.
-// Otherwise we invent a stable spot from the place id.
 export function mockRoute(start: LatLng, km: number, seed: string, end?: LatLng): LatLng[] {
   let target = end;
   if (!target) {
@@ -31,4 +30,43 @@ export function mockRoute(start: LatLng, km: number, seed: string, end?: LatLng)
   }
   const corner = { latitude: target.latitude, longitude: start.longitude };
   return [start, corner, target];
+}
+
+// The route for a booked destination (uses the pin's exact spot if it has one).
+export function routeTo(
+  start: LatLng,
+  km: number,
+  destination: { id: string; latitude?: number; longitude?: number }
+) {
+  const pinned =
+    destination.latitude != null && destination.longitude != null
+      ? { latitude: destination.latitude, longitude: destination.longitude }
+      : undefined;
+  return mockRoute(start, km, destination.id, pinned);
+}
+
+// The point that is `t` of the way along a path (t = 0 → start, 0.5 → halfway, 1 → end).
+// This is how the Keke "drives" along the route.
+export function pointAlong(path: LatLng[], t: number): LatLng {
+  if (path.length === 0) return { latitude: 0, longitude: 0 };
+  if (t <= 0 || path.length === 1) return path[0];
+  if (t >= 1) return path[path.length - 1];
+
+  const legs = path.slice(1).map((p, i) => distanceKm(path[i], p)); // length of each straight piece
+  const total = legs.reduce((sum, leg) => sum + leg, 0);
+  let remaining = t * total;
+
+  for (let i = 0; i < legs.length; i++) {
+    if (remaining <= legs[i]) {
+      const f = legs[i] === 0 ? 0 : remaining / legs[i]; // how far along THIS piece
+      const a = path[i];
+      const b = path[i + 1];
+      return {
+        latitude: a.latitude + (b.latitude - a.latitude) * f,
+        longitude: a.longitude + (b.longitude - a.longitude) * f,
+      };
+    }
+    remaining -= legs[i];
+  }
+  return path[path.length - 1];
 }

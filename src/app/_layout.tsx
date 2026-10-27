@@ -15,8 +15,7 @@ import { colors } from '../theme';
 
 SplashScreen.preventAutoHideAsync();
 
-// Screens with a × close button: they slide up from the bottom,
-// and you can swipe down to dismiss them (on iPhone).
+// Screens with a × close button slide up from the bottom; swipe down to dismiss (iPhone).
 const slideUp = {
   animation: 'slide_from_bottom',
   gestureEnabled: true,
@@ -47,9 +46,11 @@ export default function RootLayout() {
           contentStyle: { backgroundColor: colors.bg.screen },
         }}
       >
-        {/* Every other screen keeps the default side slide. */}
         <Stack.Screen name="campus" options={slideUp} />
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
+        {/* A live trip can't be swiped away: you cancel or finish it. */}
+        <Stack.Screen name="trip/index" options={{ gestureEnabled: false, animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="trip/found" options={{ gestureEnabled: false, animation: 'fade' }} />
       </Stack>
     </>
   );

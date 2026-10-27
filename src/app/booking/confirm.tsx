@@ -1,6 +1,7 @@
 // src/app/booking/confirm.tsx — 14 Confirm & pay
 import { useState } from 'react';
-import { View, Text, ScrollView, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TopBar } from '../../components/TopBar';
 import { Button } from '../../components/Button';
@@ -11,8 +12,11 @@ import { rideTypes } from '../../data/rides';
 import { paymentMethods, WALLET_BALANCE } from '../../data/payments';
 import { useUser } from '../../store/useUser';
 import { useBooking } from '../../store/useBooking';
+import { useTrip } from '../../store/useTrip';
+import { useUI } from '../../store/useUI';
 import { parseKm, fareFor, tripMinutes, priceBreakdown } from '../../utils/fare';
 import { clockIn, naira } from '../../utils/format';
+import { routeTo } from '../../utils/route';
 import { colors, space, radius, type } from '../../theme';
 
 export default function ConfirmAndPay() {
@@ -26,25 +30,44 @@ export default function ConfirmAndPay() {
   const rideType = useBooking((s) => s.rideType);
   const paymentMethod = useBooking((s) => s.paymentMethod);
   const setPaymentMethod = useBooking((s) => s.setPaymentMethod);
+  const startTrip = useTrip((s) => s.start);
+  const setSheetExpanded = useUI((s) => s.setSheetExpanded);
 
   if (!destination) return null;
 
-  // ---- Everything below is derived: worked out fresh on every render ----
   const ride = rideTypes.find((r) => r.id === rideType) ?? rideTypes[0];
   const km = parseKm(destination.distance);
   const tripMin = tripMinutes(km);
   const isStudent = email.toLowerCase().endsWith('.edu.ng');
   const campus = campuses.find((c) => c.id === campusId) ?? campuses[0];
-  const discountCode = `${campus.id.toUpperCase()}-STUDENT`; // e.g. UI-STUDENT
+  const discountCode = `${campus.id.toUpperCase()}-STUDENT`;
   const price = priceBreakdown(fareFor(ride.id, km), isStudent);
   const walletTooLow = paymentMethod === 'wallet' && WALLET_BALANCE < price.total;
+  const method = paymentMethods.find((m) => m.id === paymentMethod) ?? paymentMethods[0];
 
   const pay = () => {
     setPaying(true);
-    // Pretend to talk to the payment provider.
     setTimeout(() => {
       setPaying(false);
-      Alert.alert('Paid!', 'Finding your driver comes in Stage 5.');
+
+      // Hand everything the trip needs to the trip store.
+      const start = { latitude: campus.latitude, longitude: campus.longitude };
+      startTrip({
+        rideType: ride.id,
+        route: routeTo(start, km, destination),
+        total: price.total,
+        paidWith: method.id === 'cash' ? 'Cash' : method.title,
+        pickupName: pickup.area,
+        destinationName: destination.name,
+        km,
+        tripMin,
+        awayMin: ride.awayMin,
+      });
+
+      // Close Plan route, close the booking screens, then open the live trip.
+      setSheetExpanded(false);
+      if (router.canDismiss()) router.dismissAll();
+      router.push('/trip');
     }, 1500);
   };
 
@@ -53,7 +76,6 @@ export default function ConfirmAndPay() {
       <TopBar title="Confirm & pay" />
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* ---------- Route summary ---------- */}
         <View style={styles.card}>
           <View style={styles.routeRow}>
             <View style={styles.routeLine}>
@@ -80,7 +102,6 @@ export default function ConfirmAndPay() {
           </View>
         </View>
 
-        {/* ---------- Payment method ---------- */}
         <Text style={styles.overline}>Payment method</Text>
         <View style={styles.methods}>
           {paymentMethods.map((m) => {
@@ -109,7 +130,6 @@ export default function ConfirmAndPay() {
           })}
         </View>
 
-        {/* ---------- Fare breakdown ---------- */}
         <View style={[styles.card, styles.fare]}>
           <View style={styles.fareRow}>
             <Text style={styles.fareLabel}>Trip fare</Text>
@@ -134,7 +154,7 @@ export default function ConfirmAndPay() {
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}>
         <Button
-          label={walletTooLow ? 'Top up your wallet to pay' : `Pay ${naira(price.total)}`}
+          label={walletTooLow ? 'Top up your wallet to pay' : method.id === 'cash' ? 'Book ride' : `Pay ${naira(price.total)}`}
           fullWidth
           loading={paying}
           disabled={walletTooLow}
