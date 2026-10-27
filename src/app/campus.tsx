@@ -9,6 +9,7 @@ import { Button } from '../components/Button';
 import { campuses } from '../data/campuses';
 import { useUser } from '../store/useUser';
 import { colors, space, type } from '../theme';
+import { router } from 'expo-router';
 
 export default function ChooseCampus() {
   const insets = useSafeAreaInsets();
@@ -25,11 +26,10 @@ export default function ChooseCampus() {
     (c) => c.name.toLowerCase().includes(q) || c.location.toLowerCase().includes(q)
   );
 
-  const confirm = () => {
+   const confirm = () => {
     if (!selected) return;
-    setCampus(selected); // save to the global store
-    const name = campuses.find((c) => c.id === selected)?.name;
-    Alert.alert(`${name} it is!`, 'Location permission comes next.');
+    setCampus(selected);
+    router.push('/location');
   };
 
   return (
