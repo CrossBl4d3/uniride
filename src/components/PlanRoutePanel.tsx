@@ -2,8 +2,9 @@
 // Lives inside the Home sheet: it appears when the sheet grows to full screen.
 import { useState } from 'react';
 import {
-  View, Text, ScrollView, Pressable, KeyboardAvoidingView, Platform, StyleSheet, Alert,
+  View, Text, ScrollView, Pressable, KeyboardAvoidingView, Platform, StyleSheet, Alert, Keyboard,
 } from 'react-native';
+import { router } from 'expo-router';
 import { TopBar } from './TopBar';
 import { TextField } from './TextField';
 import { ListRow } from './ListRow';
@@ -13,7 +14,7 @@ import { useBooking } from '../store/useBooking';
 import { colors, space, radius, type } from '../theme';
 
 type Props = {
-  initialQuery?: string; // pre-filled when you tapped a recent/saved place on Home
+  initialQuery?: string;
   onClose: () => void;
 };
 
@@ -34,7 +35,8 @@ export function PlanRoutePanel({ initialQuery = '', onClose }: Props) {
   const choose = (place: Place) => {
     setDestination(place);
     setQuery(place.name);
-    Alert.alert(`Going to ${place.name}`, 'Choosing a Keke or cab comes next.');
+    Keyboard.dismiss();
+    router.push('/booking/ride');
   };
 
   const onSwap = () => {
