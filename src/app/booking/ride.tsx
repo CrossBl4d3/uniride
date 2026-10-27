@@ -1,6 +1,6 @@
 // src/app/booking/ride.tsx — 13 Choose a ride
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
 import { router } from 'expo-router';
@@ -44,8 +44,6 @@ export default function ChooseRide() {
   const selected = rideTypes.find((r) => r.id === rideType) ?? rideTypes[0];
   const selectedPrice = fareFor(selected.id, km);
 
-  // Once the map AND the sheet are ready, zoom so the whole route fits between
-  // the top bar and the sheet. Extra top padding leaves room for the label above the pin.
   useEffect(() => {
     if (!mapReady || !sheetHeight) return;
     mapRef.current?.fitToCoordinates(route, {
@@ -88,8 +86,6 @@ export default function ChooseRide() {
           </View>
         </Marker>
 
-        {/* Label + pin as ONE marker: label on top, pin below.
-            anchor {0.5, 1} = bottom centre = the pin's tip sits on the destination. */}
         <Marker coordinate={end} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
           <View style={styles.destination}>
             <View style={styles.placeLabel}>
@@ -152,7 +148,6 @@ export default function ChooseRide() {
                     <Text style={styles.meta}>{r.seats}</Text>
                   </View>
                 </View>
-                {/* Always one line; shrinks a little rather than wrapping */}
                 <Text style={styles.meta} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
                   {r.awayMin} min away · Drop-off {clockIn(r.awayMin + tripMin)}
                 </Text>
@@ -165,7 +160,7 @@ export default function ChooseRide() {
         <Button
           label={`Choose ${selected.name} · ₦${selectedPrice}`}
           fullWidth
-          onPress={() => Alert.alert('Next up', 'Confirm & pay comes next!')}
+          onPress={() => router.push('/booking/confirm')}
         />
       </View>
     </View>

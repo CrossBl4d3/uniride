@@ -9,7 +9,13 @@ export function formatPhone(digits: string) {
 // 12 → "9:46 PM" if it's 9:34 PM now
 export function clockIn(minutes: number) {
   const d = new Date(Date.now() + minutes * 60_000);
-  const h = d.getHours() % 12 || 12; // 0 and 12 both show as 12
+  const h = d.getHours() % 12 || 12;
   const m = String(d.getMinutes()).padStart(2, '0');
   return `${h}:${m} ${d.getHours() < 12 ? 'AM' : 'PM'}`;
+}
+
+// 2450 → "₦2,450"
+export function naira(amount: number) {
+  // The pattern finds every spot that has a multiple of 3 digits after it, and puts a comma there.
+  return '₦' + String(amount).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }

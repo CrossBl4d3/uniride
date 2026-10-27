@@ -3,14 +3,17 @@
 import { create } from 'zustand';
 import { Place, currentLocation } from '../data/places';
 import { RideTypeId } from '../data/rides';
+import { PaymentMethodId } from '../data/payments';
 
 type BookingState = {
   pickup: Place;
   destination: Place | null;
   rideType: RideTypeId;
+  paymentMethod: PaymentMethodId;
   setPickup: (place: Place) => void;
   setDestination: (place: Place) => void;
   setRideType: (ride: RideTypeId) => void;
+  setPaymentMethod: (method: PaymentMethodId) => void;
   swap: () => void;
   reset: () => void;
 };
@@ -19,10 +22,12 @@ export const useBooking = create<BookingState>((set, get) => ({
   pickup: currentLocation,
   destination: null,
   rideType: 'keke',
+  paymentMethod: 'wallet',
 
   setPickup: (place) => set({ pickup: place }),
   setDestination: (place) => set({ destination: place }),
   setRideType: (ride) => set({ rideType: ride }),
+  setPaymentMethod: (method) => set({ paymentMethod: method }),
 
   swap: () => {
     const { pickup, destination } = get();
@@ -30,5 +35,6 @@ export const useBooking = create<BookingState>((set, get) => ({
     set({ pickup: destination, destination: pickup });
   },
 
+  // Payment method is kept on purpose: people usually pay the same way every time.
   reset: () => set({ pickup: currentLocation, destination: null, rideType: 'keke' }),
 }));
