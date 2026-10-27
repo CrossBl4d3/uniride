@@ -7,6 +7,7 @@ import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { MapPin } from '../components/MapPin';
 import { colors, space, type } from '../theme';
+import { router } from 'expo-router';
 
 // Three circles, biggest first. Each is the accent green at a low opacity,
 // so where they overlap in the middle the green gets stronger.
@@ -20,9 +21,8 @@ export default function AllowLocation() {
   const insets = useSafeAreaInsets();
   const [asking, setAsking] = useState(false);
 
-  const finishOnboarding = () => {
-    // Stage 4 replaces this with: router.replace('/home')
-    Alert.alert('You’re all set!', 'Home and booking come in Stage 4.');
+    const finishOnboarding = () => {
+    router.replace('/home'); // replace: no going "back" into onboarding
   };
 
   const allow = async () => {
