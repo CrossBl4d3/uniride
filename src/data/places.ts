@@ -6,9 +6,10 @@ export type Place = {
   name: string;
   area: string;
   distance?: string;
+  latitude?: number;  // set for dropped pins; listed places get a mock position for now
+  longitude?: number;
 };
 
-// Where the rider is right now (later: real GPS + reverse geocoding).
 export const currentLocation: Place = { id: 'current', name: 'Your location', area: 'UI First Gate' };
 
 export const recentPlaces: Place[] = [
@@ -17,15 +18,13 @@ export const recentPlaces: Place[] = [
   { id: 'large-lt', name: 'Large Lecture Theatre', area: 'Faculty of Arts', distance: '2.1 km' },
 ];
 
-// Saved shortcuts: the label is what you call it, the place is where it really is.
 export const savedPlaces: { label: string; icon: IconName; place: Place }[] = [
   { label: 'Hall', icon: 'home', place: { id: 'mellanby', name: 'Kenneth Mellanby Hall', area: 'Hall of residence, UI', distance: '1.5 km' } },
   { label: 'Faculty', icon: 'school', place: { id: 'sci', name: 'Faculty of Science', area: 'University of Ibadan', distance: '1.2 km' } },
 ];
 
-// Everything the search box can find.
 export const searchablePlaces: Place[] = [
-  ...recentPlaces, // "..." copies every item from recentPlaces into this list
+  ...recentPlaces,
   ...savedPlaces.map((s) => s.place),
   { id: 'fb-ui', name: 'First Bank, UI Branch', area: 'Oyo Road, Agbowo, Ibadan', distance: '0.8 km' },
   { id: 'fb-atm', name: 'First Bank ATM', area: 'Faculty of Science, UI', distance: '1.6 km' },

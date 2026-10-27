@@ -36,7 +36,14 @@ export default function ChooseRide() {
   const campus = campuses.find((c) => c.id === campusId) ?? campuses[0];
   const start = { latitude: campus.latitude, longitude: campus.longitude };
   const km = parseKm(destination?.distance);
-  const route = mockRoute(start, km, destination?.id ?? 'none');
+
+  // A dropped pin has exact coordinates: route straight to it.
+  const pinned =
+    destination?.latitude != null && destination?.longitude != null
+      ? { latitude: destination.latitude, longitude: destination.longitude }
+      : undefined;
+  const route = mockRoute(start, km, destination?.id ?? 'none', pinned);
+
   const end = route[route.length - 1];
   const tripMin = tripMinutes(km);
   const isStudent = email.toLowerCase().endsWith('.edu.ng');

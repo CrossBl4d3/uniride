@@ -48,7 +48,10 @@ export function PlanRoutePanel({ initialQuery = '', onClose }: Props) {
     setQuery(pickup.name);
   };
 
-  const chooseOnMap = () => Alert.alert('Coming soon', 'Dropping a pin on the map is the next screen.');
+  const chooseOnMap = () => {
+    Keyboard.dismiss();
+    router.push('/booking/pin');
+  };
 
   return (
     <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
