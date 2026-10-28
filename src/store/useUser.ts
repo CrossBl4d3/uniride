@@ -1,26 +1,47 @@
 // src/store/useUser.ts
-// Shared memory for the signed-in user. Any screen can read or update it.
+// The signed-in user. Saved to the phone, so it survives restarts.
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
-type UserState = {
+type Profile = {
   phone: string;
   firstName: string;
   lastName: string;
   email: string;
-  campusId: string | null; // null = not chosen yet
-
-  // "Actions": the only ways to change the data
-  setProfile: (profile: Partial<Pick<UserState, 'phone' | 'firstName' | 'lastName' | 'email'>>) => void;
-  setCampus: (id: string) => void;
 };
 
-export const useUser = create<UserState>((set) => ({
+type UserState = Profile & {
+  campusId: string | null;
+  signedIn: boolean; // true once onboarding is finished
+  setProfile: (profile: Partial<Profile>) => void;
+  setCampus: (id: string) => void;
+  signIn: () => void;
+  reset: () => void;
+};
+
+const initial = {
   phone: '',
   firstName: '',
   lastName: '',
   email: '',
-  campusId: null,
+  campusId: null as string | null,
+  signedIn: false,
+};
 
-  setProfile: (profile) => set(profile), // merges in only the fields you pass
-  setCampus: (id) => set({ campusId: id }),
-}));
+// create<UserState>()(...) — the extra () is needed when wrapping a store in middleware like persist.
+export const useUser = create<UserState>()(
+  persist(
+    (set) => ({
+      ...initial,
+      setProfile: (profile) => set(profile),
+      setCampus: (id) => set({ campusId: id }),
+      signIn: () => set({ signedIn: true }),
+      reset: () => set(initial),
+    }),
+    {
+      name: 'uniride-user', // the key it's saved under on the phone
+      storage: createJSONStorage(() => AsyncStorage),
+    }
+  )
+);

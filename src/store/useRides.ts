@@ -1,33 +1,33 @@
 // src/store/useRides.ts
-// Your ride history. Finished and cancelled trips are added here.
-// It starts with a few example rides so the screen isn't empty.
+// Your ride history. Saved to the phone.
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Driver, driverFor } from '../data/drivers';
 import { RideTypeId } from '../data/rides';
 import { campuses } from '../data/campuses';
 import { LatLng, mockRoute } from '../utils/route';
 
 export type RideRecord = {
-  id: string; // the receipt number, e.g. "UR-20931"
+  id: string;
   status: 'completed' | 'cancelled';
   rideType: RideTypeId;
   pickupName: string;
   destinationName: string;
-  startedAt: number; // ms
+  startedAt: number;
   endedAt: number;
   km: number;
   minutes: number;
   fare: number;
   fee: number;
   discount: number;
-  total: number;   // what the ride cost
-  charged: number; // what was actually taken (₦0 or a fee if cancelled)
+  total: number;
+  charged: number;
   paidWith: string;
   driver: Driver | null;
   route: LatLng[];
 };
 
-// A time `days` ago at hour:minute, so the examples always look recent.
 const at = (days: number, hour: number, minute: number) => {
   const d = new Date();
   d.setDate(d.getDate() - days);
@@ -63,13 +63,18 @@ const examples: RideRecord[] = [
 ];
 
 type RidesState = {
-  rides: RideRecord[]; // newest first
+  rides: RideRecord[];
   add: (ride: RideRecord) => void;
+  reset: () => void;
 };
 
-export const useRides = create<RidesState>((set) => ({
-  rides: examples,
-  // set() can take a function: it receives the CURRENT state and returns the change.
-  // Use this whenever the new value depends on the old one.
-  add: (ride) => set((state) => ({ rides: [ride, ...state.rides] })),
-}));
+export const useRides = create<RidesState>()(
+  persist(
+    (set) => ({
+      rides: examples,
+      add: (ride) => set((state) => ({ rides: [ride, ...state.rides] })),
+      reset: () => set({ rides: examples }),
+    }),
+    { name: 'uniride-rides', storage: createJSONStorage(() => AsyncStorage) }
+  )
+);

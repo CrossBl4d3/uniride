@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { MapPin } from '../components/MapPin';
+import { useUser } from '../store/useUser';
 import { colors, space, type } from '../theme';
 
 const rings = [
@@ -17,10 +18,11 @@ const rings = [
 
 export default function AllowLocation() {
   const insets = useSafeAreaInsets();
+  const signIn = useUser((s) => s.signIn);
   const [asking, setAsking] = useState(false);
 
   const finishOnboarding = () => {
-    // Close every onboarding screen first, so nothing is left "underneath" Home.
+    signIn(); // remembered on the phone: next launch goes straight to Home
     if (router.canDismiss()) router.dismissAll();
     router.replace('/home');
   };

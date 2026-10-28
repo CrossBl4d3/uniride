@@ -1,33 +1,34 @@
 // src/app/sign-in/verify.tsx — 05 Sign in: Verify code
 import { useEffect, useState } from 'react';
-import { View, Text, Animated, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, Text, Animated, Pressable, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TopBar } from '../../components/TopBar';
 import { Button } from '../../components/Button';
 import { Keypad } from '../../components/Keypad';
 import { useBlink } from '../../hooks/useBlink';
+import { useUser } from '../../store/useUser';
 import { formatPhone } from '../../utils/format';
 import { colors, space, radius, type } from '../../theme';
 
 const CODE_LENGTH = 4;
-const RESEND_AFTER = 30; // seconds
+const RESEND_AFTER = 30;
 
 export default function VerifyCode() {
   const insets = useSafeAreaInsets();
-  const { phone = '' } = useLocalSearchParams<{ phone: string }>(); // read what phone.tsx sent
+  const { phone = '' } = useLocalSearchParams<{ phone: string }>();
+  const setProfile = useUser((s) => s.setProfile);
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
   const [verifying, setVerifying] = useState(false);
   const [seconds, setSeconds] = useState(RESEND_AFTER);
   const caret = useBlink();
 
-  // Countdown: every second, take one off — until we hit 0.
   useEffect(() => {
     if (seconds === 0) return;
     const tick = setTimeout(() => setSeconds((s) => s - 1), 1000);
     return () => clearTimeout(tick);
-  }, [seconds]); // runs again each time `seconds` changes
+  }, [seconds]);
 
   const addDigit = (d: string) => {
     setError('');
@@ -38,7 +39,6 @@ export default function VerifyCode() {
     setCode((prev) => prev.slice(0, -1));
   };
 
-  // No backend yet, so we fake the server: wait 1s, accept any code except 0000.
   const verify = () => {
     setVerifying(true);
     setTimeout(() => {
@@ -48,6 +48,7 @@ export default function VerifyCode() {
         setCode('');
         return;
       }
+      setProfile({ phone }); // the number is confirmed, so save it
       router.replace('/sign-in/details');
     }, 1000);
   };
@@ -64,15 +65,11 @@ export default function VerifyCode() {
         </Text>
 
         <View style={styles.cells}>
-          {/* Make 4 boxes. Box i shows code[i] if it exists. */}
           {Array.from({ length: CODE_LENGTH }, (_, i) => {
             const digit = code[i];
-            const active = i === code.length && !verifying; // the next box to fill
+            const active = i === code.length && !verifying;
             return (
-              <View
-                key={i}
-                style={[styles.cell, active && styles.cellActive, !!error && styles.cellError]}
-              >
+              <View key={i} style={[styles.cell, active && styles.cellActive, !!error && styles.cellError]}>
                 {digit ? (
                   <Text style={styles.digit}>{digit}</Text>
                 ) : active ? (

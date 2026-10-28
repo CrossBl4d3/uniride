@@ -4,19 +4,30 @@ import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
 import { router } from 'expo-router';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import { AppIcon, Wordmark } from '../components/Brand';
+import { useUser } from '../store/useUser';
+import { waitForSavedData } from '../store/session';
 import { colors, space, type } from '../theme';
 
 export default function Splash() {
   const { width } = useWindowDimensions();
 
   useEffect(() => {
-    const timer = setTimeout(() => router.replace('/welcome'), 1500);
-    return () => clearTimeout(timer);
+    let cancelled = false;
+    const minimumShow = new Promise((resolve) => setTimeout(resolve, 1500));
+
+    // Wait for BOTH: the splash to show for 1.5s, and saved data to load.
+    Promise.all([minimumShow, waitForSavedData()]).then(() => {
+      if (cancelled) return;
+      router.replace(useUser.getState().signedIn ? '/home' : '/welcome');
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
     <View style={styles.screen}>
-      {/* Full-screen layer that centres the glow behind the logo */}
       <View style={styles.glowLayer} pointerEvents="none">
         <Svg width={width} height={width}>
           <Defs>
