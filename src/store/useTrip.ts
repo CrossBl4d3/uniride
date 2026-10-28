@@ -6,25 +6,26 @@ import { Driver, driverFor } from '../data/drivers';
 import { RideTypeId } from '../data/rides';
 import { LatLng } from '../utils/route';
 import { useBooking } from './useBooking';
+import { useRides, RideRecord } from './useRides';
 
 export type TripStatus =
   | 'idle'
-  | 'searching'  // 15 Finding your driver
-  | 'found'      // 16 Driver found
-  | 'arriving'   // 17 Driver on the way
-  | 'arrived'    // 18 Driver has arrived
-  | 'onTrip'     // 19 Trip in progress
-  | 'complete'   // 20 Rate driver
-  | 'noDrivers'; // 22 No Kekes available
+  | 'searching'
+  | 'found'
+  | 'arriving'
+  | 'arrived'
+  | 'onTrip'
+  | 'complete'
+  | 'noDrivers';
 
-// ---- Simulator settings (change these to test different situations) ----
+// ---- Simulator settings ----
 const SEARCH_SECONDS = 4;
 const APPROACH_SECONDS = 15;
 const PIN_WAIT_SECONDS = 8;
 const TRIP_SECONDS = 20;
 const TICK_MS = 500;
-export const NO_DRIVERS_CHANCE = 0;     // 1 = always "No Kekes nearby"
-export const FREE_CANCEL_SECONDS = 120; // 10 = see the cancellation fee quickly
+export const NO_DRIVERS_CHANCE = 0;
+export const FREE_CANCEL_SECONDS = 120;
 export const CANCEL_FEE = 100;
 
 let timeout: ReturnType<typeof setTimeout> | null = null;
@@ -39,6 +40,9 @@ function stopTimers() {
 export type TripDetails = {
   rideType: RideTypeId;
   route: LatLng[];
+  fare: number;
+  fee: number;
+  discount: number;
   total: number;
   paidWith: string;
   pickupName: string;
@@ -55,11 +59,12 @@ type TripState = TripDetails & {
   progress: number;
   pin: string;
   receipt: string;
-  bookedAt: number; // when the ride was booked (for the free-cancel rule)
-  arriveAt: number; // fixed arrival time, set once the trip starts
+  bookedAt: number;
+  arriveAt: number;
   start: (details: TripDetails) => void;
   track: () => void;
   retry: () => void;
+  cancel: (fee: number) => void;
   end: () => void;
   reset: () => void;
 };
@@ -67,6 +72,9 @@ type TripState = TripDetails & {
 const emptyDetails: TripDetails = {
   rideType: 'keke',
   route: [],
+  fare: 0,
+  fee: 0,
+  discount: 0,
   total: 0,
   paidWith: '',
   pickupName: '',
@@ -76,10 +84,12 @@ const emptyDetails: TripDetails = {
   awayMin: 0,
 };
 
-// Copy just the booking details out of the full state (used by retry).
 const detailsOf = (s: TripDetails): TripDetails => ({
   rideType: s.rideType,
   route: s.route,
+  fare: s.fare,
+  fee: s.fee,
+  discount: s.discount,
   total: s.total,
   paidWith: s.paidWith,
   pickupName: s.pickupName,
@@ -87,6 +97,27 @@ const detailsOf = (s: TripDetails): TripDetails => ({
   km: s.km,
   tripMin: s.tripMin,
   awayMin: s.awayMin,
+});
+
+// Turn the live trip into a history entry.
+const recordOf = (s: TripState, status: RideRecord['status'], charged: number): RideRecord => ({
+  id: s.receipt.replace('#', ''),
+  status,
+  rideType: s.rideType,
+  pickupName: s.pickupName,
+  destinationName: s.destinationName,
+  startedAt: s.bookedAt,
+  endedAt: status === 'completed' && s.arriveAt ? s.arriveAt : Date.now(),
+  km: s.km,
+  minutes: s.tripMin,
+  fare: s.fare,
+  fee: s.fee,
+  discount: s.discount,
+  total: s.total,
+  charged,
+  paidWith: s.paidWith,
+  driver: s.driver,
+  route: s.route,
 });
 
 export const useTrip = create<TripState>((set, get) => {
@@ -148,24 +179,31 @@ export const useTrip = create<TripState>((set, get) => {
       runProgress(APPROACH_SECONDS, () => {
         set({ status: 'arrived' });
         timeout = setTimeout(() => {
-          // Work out the arrival time ONCE, when the trip really starts.
           set({ status: 'onTrip', progress: 0, arriveAt: Date.now() + get().tripMin * 60_000 });
-          runProgress(TRIP_SECONDS, () => set({ status: 'complete' }));
+          runProgress(TRIP_SECONDS, () => {
+            set({ status: 'complete' });
+            // One store updating another: save the finished trip to your history.
+            useRides.getState().add(recordOf(get(), 'completed', get().total));
+          });
         }, PIN_WAIT_SECONDS * 1000);
       });
     },
 
-    // Book the same ride again (No Kekes → Try again).
     retry: () => get().start(detailsOf(get())),
 
-    // Finish (cancelled, rated or skipped): stop now, clear up after the screen has closed.
+    // Cancel: save it to history (with any fee charged), then finish up.
+    cancel: (fee) => {
+      useRides.getState().add(recordOf(get(), 'cancelled', fee));
+      get().end();
+    },
+
     end: () => {
       stopTimers();
       const thisTrip = get().bookedAt;
       setTimeout(() => {
-        if (get().bookedAt !== thisTrip) return; // a new trip started since: leave it alone
+        if (get().bookedAt !== thisTrip) return;
         get().reset();
-        useBooking.getState().reset(); // one store can update another with getState()
+        useBooking.getState().reset();
       }, 600);
     },
 

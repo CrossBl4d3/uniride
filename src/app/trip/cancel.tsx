@@ -1,5 +1,4 @@
 // src/app/trip/cancel.tsx — 21 Cancel ride
-// A sheet over the live trip: the map stays visible, dimmed, behind it.
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, Easing } from 'react-native';
 import { router } from 'expo-router';
@@ -18,7 +17,6 @@ const reasons = [
   'Something else',
 ];
 
-// 120 → "2 minutes", 10 → "10 seconds"
 const duration = (s: number) => (s >= 60 ? `${Math.round(s / 60)} minutes` : `${s} seconds`);
 
 export default function CancelRide() {
@@ -26,23 +24,19 @@ export default function CancelRide() {
   const trip = useTrip();
   const [reason, setReason] = useState<string | null>(null);
 
-  // 0 = hidden, 1 = shown. Drives the backdrop fade AND the sheet slide.
   const show = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(show, { toValue: 1, duration: 280, easing: Easing.out(Easing.cubic), useNativeDriver: true }).start();
   }, [show]);
 
-  // Slide the sheet away first, THEN do the next thing.
   const close = (then: () => void) => {
     Animated.timing(show, { toValue: 0, duration: 220, easing: Easing.in(Easing.cubic), useNativeDriver: true }).start(() => then());
   };
 
-  // If the trip moves on while this is open (e.g. it starts), cancelling no longer makes sense.
   useEffect(() => {
     if (trip.status === 'onTrip' || trip.status === 'complete' || trip.status === 'noDrivers') router.back();
   }, [trip.status]);
 
-  // ---- The cancellation rules, all derived ----
   const driver = trip.driver;
   const searching = trip.status === 'searching' || !driver;
   const secondsSinceBooking = (Date.now() - trip.bookedAt) / 1000;
@@ -73,7 +67,7 @@ export default function CancelRide() {
   const keep = () => close(() => router.back());
   const cancel = () =>
     close(() => {
-      trip.end(); // later: also tell the backend the reason
+      trip.cancel(free ? 0 : CANCEL_FEE); // saves it to your ride history, then finishes
       if (router.canDismiss()) router.dismissAll();
     });
 

@@ -2,6 +2,7 @@
 import { useEffect, useRef } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, Easing } from 'react-native';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, IconName } from './Icon';
 import { useUI } from '../store/useUI';
@@ -14,19 +15,19 @@ const tabs: Record<string, { label: string; icon: IconName }> = {
   account: { label: 'Account', icon: 'user' },
 };
 
-// The bar floats over the screens, so screens need to know how tall it is
-// to keep their content clear of it. 1 border + 10 top padding + 54 tab + bottom padding.
+// The bar floats over the screens, so screens need to know how tall it is.
 export function useTabBarHeight() {
   const insets = useSafeAreaInsets();
   return 1 + 10 + 54 + Math.max(insets.bottom, space.sm);
 }
 
-export function TabBar({ state, navigation }: BottomTabBarProps) {
+// We only use `state` (which tabs exist and which is active).
+// Switching tabs goes through Expo Router, like every other screen.
+export function TabBar({ state }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const height = useTabBarHeight();
   const hidden = useUI((s) => s.sheetExpanded);
 
-  // 0 = showing, 1 = slid down out of view
   const slide = useRef(new Animated.Value(0)).current;
   useEffect(() => {
     Animated.timing(slide, {
@@ -53,15 +54,13 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
         if (!tab) return null;
         const focused = state.index === index;
 
-        const onPress = () => {
-          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-          if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
-        };
-
         return (
           <Pressable
             key={route.key}
-            onPress={onPress}
+            // "/home", "/rides"... the (tabs) group isn't part of the path.
+            onPress={() => {
+              if (!focused) router.navigate(`/${route.name}` as never);
+            }}
             style={styles.tab}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
@@ -79,7 +78,7 @@ export function TabBar({ state, navigation }: BottomTabBarProps) {
 
 const styles = StyleSheet.create({
   bar: {
-    position: 'absolute', // float over the screen instead of taking space below it
+    position: 'absolute',
     left: 0,
     right: 0,
     bottom: 0,

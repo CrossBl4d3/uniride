@@ -50,11 +50,13 @@ export default function ConfirmAndPay() {
     setTimeout(() => {
       setPaying(false);
 
-      // Hand everything the trip needs to the trip store.
       const start = { latitude: campus.latitude, longitude: campus.longitude };
       startTrip({
         rideType: ride.id,
         route: routeTo(start, km, destination),
+        fare: price.fare,
+        fee: price.fee,
+        discount: price.discount,
         total: price.total,
         paidWith: method.id === 'cash' ? 'Cash' : method.title,
         pickupName: pickup.area,
@@ -64,7 +66,6 @@ export default function ConfirmAndPay() {
         awayMin: ride.awayMin,
       });
 
-      // Close Plan route, close the booking screens, then open the live trip.
       setSheetExpanded(false);
       if (router.canDismiss()) router.dismissAll();
       router.push('/trip');
