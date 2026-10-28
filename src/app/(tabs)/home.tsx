@@ -1,7 +1,7 @@
 // src/app/(tabs)/home.tsx — 09 Home (the sheet grows into 10 Plan route)
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, Pressable, StyleSheet, Alert, Animated, Easing, BackHandler, Keyboard, useWindowDimensions,
+  View, Text, Pressable, ScrollView, StyleSheet, Animated, Easing, BackHandler, Keyboard, useWindowDimensions,
 } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -14,14 +14,15 @@ import { RiderMarker, VehicleMarker } from '../../components/MapMarkers';
 import { PlanRoutePanel } from '../../components/PlanRoutePanel';
 import { useTabBarHeight } from '../../components/TabBar';
 import { campuses } from '../../data/campuses';
-import { recentPlaces, savedPlaces, Place } from '../../data/places';
+import { recentPlaces, Place } from '../../data/places';
 import { useUser } from '../../store/useUser';
 import { useBooking } from '../../store/useBooking';
 import { useUI } from '../../store/useUI';
+import { usePlaces } from '../../store/usePlaces';
 import { darkMapStyle } from '../../theme/mapStyle';
 import { colors, space, radius, type } from '../../theme';
 
-const DURATION = 320; // ms, same as the tab bar so they move together
+const DURATION = 320;
 
 function greeting() {
   const hour = new Date().getHours();
@@ -40,29 +41,28 @@ export default function Home() {
   const setDestination = useBooking((s) => s.setDestination);
   const expanded = useUI((s) => s.sheetExpanded);
   const setExpanded = useUI((s) => s.setSheetExpanded);
+  const saved = usePlaces((s) => s.saved);
 
   const mapRef = useRef<MapView>(null);
   const [collapsedHeight, setCollapsedHeight] = useState(420);
   const [showPanel, setShowPanel] = useState(false);
   const [prefill, setPrefill] = useState('');
 
-  // 0 = sheet collapsed, 1 = sheet covering the whole screen
   const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (!expanded) Keyboard.dismiss(); // close the keyboard as the sheet starts to shrink
-    if (expanded) setShowPanel(true);  // mount Plan route as we start growing
+    if (!expanded) Keyboard.dismiss();
+    if (expanded) setShowPanel(true);
     Animated.timing(progress, {
       toValue: expanded ? 1 : 0,
       duration: DURATION,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: true,
     }).start(({ finished }) => {
-      if (finished && !expanded) setShowPanel(false); // unmount once fully collapsed
+      if (finished && !expanded) setShowPanel(false);
     });
   }, [expanded, progress]);
 
-  // Android back button: collapse the sheet instead of leaving Home.
   useEffect(() => {
     if (!expanded) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -72,7 +72,6 @@ export default function Home() {
     return () => sub.remove();
   }, [expanded, setExpanded]);
 
-  // If Home ever unmounts while expanded, make sure the tab bar comes back.
   useEffect(() => () => setExpanded(false), [setExpanded]);
 
   const openPlanner = (place?: Place) => {
@@ -90,7 +89,6 @@ export default function Home() {
     { id: 'k3', latitude: latitude - 0.0016, longitude: longitude - 0.0035 },
   ];
 
-  // Everything the animation drives, all derived from `progress`
   const sheetY = progress.interpolate({
     inputRange: [0, 1],
     outputRange: [screenHeight - collapsedHeight, 0],
@@ -143,15 +141,13 @@ export default function Home() {
             <Icon name="chevron-down" size={14} color={colors.icon.accent} />
           </Pressable>
         </View>
-        <Pressable style={styles.roundButton} onPress={() => Alert.alert('Notifications', 'Coming in Stage 7.')}>
+        <Pressable style={styles.roundButton} onPress={() => router.push('/notifications')} accessibilityLabel="Notifications">
           <Icon name="bell" />
         </Pressable>
       </View>
 
-      {/* Fades in behind the growing sheet so its rounded corners never show the map */}
       <Animated.View pointerEvents="none" style={[styles.backdrop, { opacity: progress }]} />
 
-      {/* The sheet is always full-screen height; we slide it so only its top shows */}
       <Animated.View style={[styles.sheet, { height: screenHeight, transform: [{ translateY: sheetY }] }]}>
         <Animated.View
           onLayout={(e) => setCollapsedHeight(e.nativeEvent.layout.height)}
@@ -167,16 +163,22 @@ export default function Home() {
             <Icon name="clock" color={colors.icon.muted} />
           </Pressable>
 
-          <View style={styles.chips}>
-            {savedPlaces.map((s) => (
+          {/* Scrolls sideways if you save lots of places */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={styles.chipScroll}
+            contentContainerStyle={styles.chips}
+          >
+            {saved.map((s) => (
               <Pressable key={s.label} onPress={() => openPlanner(s.place)}>
                 <Chip icon={s.icon} label={s.label} />
               </Pressable>
             ))}
-            <Pressable onPress={() => Alert.alert('Add place', 'Saving places comes later.')}>
+            <Pressable onPress={() => router.push('/add-place')}>
               <Chip icon="plus" label="Add place" />
             </Pressable>
-          </View>
+          </ScrollView>
 
           <View>
             {recentPlaces.slice(0, 2).map((p, i) => (
@@ -267,5 +269,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.surfaceRaised,
   },
   placeholder: { ...type.bodyLarge, flex: 1, color: colors.text.tertiary },
-  chips: { flexDirection: 'row', gap: space.sm },
+  // Negative margin lets the chips scroll edge-to-edge; padding keeps the first one lined up.
+  chipScroll: { flexGrow: 0, marginHorizontal: -space.xl },
+  chips: { flexDirection: 'row', gap: space.sm, paddingHorizontal: space.xl },
 });

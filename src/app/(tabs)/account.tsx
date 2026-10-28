@@ -7,8 +7,8 @@ import { Chip } from '../../components/Chip';
 import { ListRow } from '../../components/ListRow';
 import { useTabBarHeight } from '../../components/TabBar';
 import { campuses } from '../../data/campuses';
-import { savedPlaces } from '../../data/places';
 import { useUser } from '../../store/useUser';
+import { usePlaces } from '../../store/usePlaces';
 import { signOutEverywhere } from '../../store/session';
 import { formatPhone } from '../../utils/format';
 import { colors, space, radius, type } from '../../theme';
@@ -17,13 +17,12 @@ export default function Account() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useTabBarHeight();
   const user = useUser();
+  const saved = usePlaces((s) => s.saved);
 
   const campus = campuses.find((c) => c.id === user.campusId);
   const isStudent = user.email.toLowerCase().endsWith('.edu.ng');
   const name = `${user.firstName} ${user.lastName}`.trim() || 'UniRide rider';
   const initials = ((user.firstName[0] ?? '') + (user.lastName[0] ?? '')).toUpperCase() || 'U';
-
-  const comingSoon = (what: string) => () => Alert.alert(what, 'This comes in Stage 7.');
 
   const confirmLogOut = () =>
     Alert.alert('Log out?', 'You’ll need your phone number to sign back in.', [
@@ -66,11 +65,17 @@ export default function Account() {
         <ListRow
           icon="pin"
           title="Saved places"
-          subtitle={savedPlaces.map((s) => s.label).join(', ')}
+          subtitle={saved.length ? saved.map((s) => s.label).join(', ') : 'None yet'}
           chevron
-          onPress={comingSoon('Saved places')}
+          onPress={() => router.push('/saved-places')}
         />
-        <ListRow icon="card" title="Payment methods" subtitle="Wallet, Visa •••• 4417" chevron onPress={comingSoon('Payment methods')} />
+        <ListRow
+          icon="card"
+          title="Payment methods"
+          subtitle="Wallet, Visa •••• 4417"
+          chevron
+          onPress={() => Alert.alert('Payment methods', 'Coming in the next part.')}
+        />
         <ListRow
           icon="school"
           title="Student verification"
@@ -84,8 +89,8 @@ export default function Account() {
       <Text style={styles.overline}>Safety & support</Text>
       <View style={styles.card}>
         <ListRow icon="shield" title="Safety toolkit" subtitle="SOS, trusted contacts" chevron onPress={() => router.push('/safety')} />
-        <ListRow icon="bell" title="Notifications" chevron onPress={comingSoon('Notifications')} />
-        <ListRow icon="help" title="Help & support" chevron onPress={comingSoon('Help & support')} />
+        <ListRow icon="bell" title="Notifications" chevron onPress={() => router.push('/notifications')} />
+        <ListRow icon="help" title="Help & support" chevron onPress={() => router.push('/help')} />
         <Pressable onPress={confirmLogOut} style={({ pressed }) => [styles.logout, pressed && { opacity: 0.7 }]}>
           <View style={styles.logoutIcon}>
             <Icon name="logout" size={22} color={colors.status.error} />

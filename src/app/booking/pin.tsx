@@ -1,9 +1,9 @@
 // src/app/booking/pin.tsx — 12 Set destination on map
+// Two jobs: purpose "book" (default) sets your drop-off; purpose "save" picks a place to save.
 import { useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, Animated, ActivityIndicator } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
-import * as Location from 'expo-location';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../components/Icon';
 import { Button } from '../../components/Button';
@@ -13,18 +13,24 @@ import { campuses } from '../../data/campuses';
 import { Place } from '../../data/places';
 import { useUser } from '../../store/useUser';
 import { useBooking } from '../../store/useBooking';
-import { distanceKm, LatLng } from '../../utils/route';
+import { useUI } from '../../store/useUI';
+import { placeAt } from '../../utils/geocode';
+import { LatLng } from '../../utils/route';
 import { darkMapStyle } from '../../theme/mapStyle';
 import { colors, space, radius, type } from '../../theme';
 
 const PIN_SIZE = 44;
-const PIN_HEIGHT = PIN_SIZE * (74 / 54); // MapPin keeps the 54×74 shape
+const PIN_HEIGHT = PIN_SIZE * (74 / 54);
 
 export default function SetOnMap() {
   const insets = useSafeAreaInsets();
   const mapRef = useRef<MapView>(null);
+  const { purpose } = useLocalSearchParams<{ purpose?: 'book' | 'save' }>();
+  const saving = purpose === 'save';
+
   const campusId = useUser((s) => s.campusId);
   const setDestination = useBooking((s) => s.setDestination);
+  const setPickedPlace = useUI((s) => s.setPickedPlace);
 
   const campus = campuses.find((c) => c.id === campusId) ?? campuses[0];
   const start: LatLng = { latitude: campus.latitude, longitude: campus.longitude };
@@ -34,14 +40,13 @@ export default function SetOnMap() {
   const [looking, setLooking] = useState(false);
   const [place, setPlace] = useState<Place | null>(null);
 
-  const movingRef = useRef(false); // instant copy of `moving` for the fast drag events
-  const lookupId = useRef(0);      // which lookup is the newest one
-  const lift = useRef(new Animated.Value(0)).current; // 0 = pin down, 1 = lifted
+  const movingRef = useRef(false);
+  const lookupId = useRef(0);
+  const lift = useRef(new Animated.Value(0)).current;
 
   const animateLift = (to: number) =>
     Animated.spring(lift, { toValue: to, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
 
-  // Fires many times a second while the map moves, so only act on the FIRST one.
   const onMoveStart = () => {
     if (movingRef.current) return;
     movingRef.current = true;
@@ -49,7 +54,6 @@ export default function SetOnMap() {
     animateLift(1);
   };
 
-  // Fires once when the map comes to rest.
   const onMoveEnd = (region: Region) => {
     movingRef.current = false;
     setMoving(false);
@@ -57,48 +61,23 @@ export default function SetOnMap() {
     lookUp({ latitude: region.latitude, longitude: region.longitude });
   };
 
-  // "What's at this spot?" — uses the phone's own geocoder (needs location permission).
   const lookUp = async (point: LatLng) => {
-    const myId = ++lookupId.current; // tag this lookup with a number
+    const myId = ++lookupId.current;
     setLooking(true);
-
-    const roadKm = distanceKm(start, point) * 1.3; // roads are longer than a straight line
-    let name = 'Dropped pin';
-    let area = `${point.latitude.toFixed(5)}, ${point.longitude.toFixed(5)}`;
-
-    try {
-      const { granted } = await Location.getForegroundPermissionsAsync();
-      if (granted) {
-        const [address] = await Location.reverseGeocodeAsync(point);
-        if (address) {
-          name = address.name || address.street || name;
-          area = [address.street !== name ? address.street : null, address.district, address.city]
-            .filter(Boolean)
-            .join(', ') || area;
-        }
-      }
-    } catch {
-      // No connection or the geocoder failed: keep the "Dropped pin" fallback.
-    }
-
-    // If the map moved again while we waited, a newer lookup exists: ignore this old answer.
-    if (myId !== lookupId.current) return;
-
-    setPlace({
-      id: `pin-${point.latitude.toFixed(5)}-${point.longitude.toFixed(5)}`,
-      name,
-      area,
-      distance: `${roadKm.toFixed(1)} km`,
-      latitude: point.latitude,
-      longitude: point.longitude,
-    });
+    const found = await placeAt(point, start);
+    if (myId !== lookupId.current) return; // a newer lookup has started: ignore this one
+    setPlace(found);
     setLooking(false);
   };
 
   const confirm = () => {
     if (!place) return;
+    if (saving) {
+      setPickedPlace(place); // Add a place picks this up when we go back
+      router.back();
+      return;
+    }
     setDestination(place);
-    // replace: Back from Choose a ride returns to Plan route, not to this pin screen.
     router.replace('/booking/ride');
   };
 
@@ -126,8 +105,6 @@ export default function SetOnMap() {
         </Marker>
       </MapView>
 
-      {/* The pin is NOT on the map: it's fixed over the centre of the screen.
-          Its tip sits exactly on the map's centre point. */}
       <View style={styles.pinLayer} pointerEvents="none">
         <Animated.View style={[styles.pinShadow, { transform: [{ scale: shadowScale }] }]} />
         <Animated.View style={{ position: 'absolute', transform: [{ translateY: -PIN_HEIGHT / 2 }, { translateY: pinY }] }}>
@@ -141,13 +118,15 @@ export default function SetOnMap() {
         </Pressable>
         <View style={styles.hint}>
           <View style={styles.hintDot} />
-          <Text style={styles.hintText}>Move the map to set your drop-off</Text>
+          <Text style={styles.hintText}>
+            {saving ? 'Move the map to choose a place' : 'Move the map to set your drop-off'}
+          </Text>
         </View>
       </View>
 
       <View style={[styles.sheet, { paddingBottom: insets.bottom + space.lg }]}>
         <View style={styles.handle} />
-        <Text style={styles.overline}>Drop-off</Text>
+        <Text style={styles.overline}>{saving ? 'Place' : 'Drop-off'}</Text>
 
         <View style={styles.placeRow}>
           <View style={{ flex: 1, gap: 2 }}>
@@ -168,7 +147,12 @@ export default function SetOnMap() {
           </Pressable>
         </View>
 
-        <Button label="Confirm destination" fullWidth disabled={busy || !place} onPress={confirm} />
+        <Button
+          label={saving ? 'Use this place' : 'Confirm destination'}
+          fullWidth
+          disabled={busy || !place}
+          onPress={confirm}
+        />
       </View>
     </View>
   );
@@ -185,12 +169,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pinShadow: {
-    width: 14,
-    height: 6,
-    borderRadius: 7,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
+  pinShadow: { width: 14, height: 6, borderRadius: 7, backgroundColor: 'rgba(0,0,0,0.45)' },
   top: {
     position: 'absolute',
     left: space.xl,

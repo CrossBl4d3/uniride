@@ -9,8 +9,9 @@ import { TopBar } from './TopBar';
 import { TextField } from './TextField';
 import { ListRow } from './ListRow';
 import { Icon } from './Icon';
-import { recentPlaces, savedPlaces, searchablePlaces, Place } from '../data/places';
+import { recentPlaces, searchablePlaces, Place } from '../data/places';
 import { useBooking } from '../store/useBooking';
+import { usePlaces } from '../store/usePlaces';
 import { colors, space, radius, type } from '../theme';
 
 type Props = {
@@ -23,6 +24,7 @@ export function PlanRoutePanel({ initialQuery = '', onClose }: Props) {
   const destination = useBooking((s) => s.destination);
   const setDestination = useBooking((s) => s.setDestination);
   const swap = useBooking((s) => s.swap);
+  const saved = usePlaces((s) => s.saved);
   const [query, setQuery] = useState(initialQuery);
 
   const q = query.trim().toLowerCase();
@@ -112,8 +114,8 @@ export function PlanRoutePanel({ initialQuery = '', onClose }: Props) {
               <ListRow key={p.id} icon="clock" title={p.name} subtitle={p.area} trailingText={p.distance} onPress={() => choose(p)} />
             ))}
 
-            <Text style={styles.overline}>Saved</Text>
-            {savedPlaces.map((s) => (
+            {saved.length > 0 && <Text style={styles.overline}>Saved</Text>}
+            {saved.map((s) => (
               <ListRow key={s.label} icon={s.icon} title={s.label} subtitle={s.place.name} chevron onPress={() => choose(s.place)} />
             ))}
           </>

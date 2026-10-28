@@ -1,9 +1,9 @@
 // src/app/rides/[id].tsx — 24 Trip details: Receipt
 // The [id] in the file name is filled in by whichever ride you tapped.
 import { useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, Share, Alert, Linking } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Share } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TopBar } from '../../components/TopBar';
 import { Button } from '../../components/Button';
@@ -55,7 +55,6 @@ export default function TripDetails() {
       <TopBar title="Trip details" />
 
       <ScrollView contentContainerStyle={styles.content}>
-        {/* A small, non-interactive map of the route */}
         <View style={styles.mapCard} pointerEvents="none">
           <MapView
             ref={mapRef}
@@ -83,7 +82,7 @@ export default function TripDetails() {
               strokeWidth={4}
               lineCap="round"
               lineJoin="round"
-              lineDashPattern={cancelled ? [6, 6] : undefined} // dashed = never travelled
+              lineDashPattern={cancelled ? [6, 6] : undefined}
             />
             <Marker coordinate={start} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
               <View style={styles.startDot} />
@@ -119,11 +118,12 @@ export default function TripDetails() {
         </View>
 
         {ride.driver && (
-          <DriverCard
-            driver={ride.driver}
-            onMessage={() => Alert.alert('Chat', 'Chatting with your driver comes in Stage 7.')}
-            onCall={() => Linking.openURL(`tel:${ride.driver!.phone}`)}
-          />
+          <View style={{ gap: space.sm }}>
+            <DriverCard driver={ride.driver} />
+            <Text style={styles.note}>
+              Lost something or need to reach {ride.driver.firstName}? Use Get help below.
+            </Text>
+          </View>
         )}
 
         <View style={[styles.card, { gap: space.sm }]}>
@@ -175,7 +175,7 @@ export default function TripDetails() {
           label="Get help"
           variant="secondary"
           icon={<Icon name="help" size={18} />}
-          onPress={() => Alert.alert('Help & support', 'Help comes in Stage 7.')}
+          onPress={() => router.push({ pathname: '/help', params: { rideId: ride.id } })}
           style={styles.half}
         />
       </View>
@@ -221,6 +221,7 @@ const styles = StyleSheet.create({
   value: { ...type.bodyStrong, color: colors.text.primary },
   accent: { ...type.captionStrong, color: colors.text.accent },
   error: { ...type.captionStrong, color: colors.status.error },
+  note: { ...type.caption, color: colors.text.tertiary, paddingHorizontal: space.xs },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   rowLabel: { ...type.body, color: colors.text.secondary },
   totalRow: { marginTop: space.xs, paddingTop: space.sm, borderTopWidth: 1, borderTopColor: colors.border.hairline },

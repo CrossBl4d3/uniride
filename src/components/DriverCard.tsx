@@ -1,4 +1,4 @@
-// src/components/DriverCard.tsx — avatar, name, rating, plate, message & call
+// src/components/DriverCard.tsx — avatar, name, rating, plate, and (optionally) message & call
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Icon } from './Icon';
 import { Driver } from '../data/drivers';
@@ -6,9 +6,10 @@ import { colors, space, radius, type } from '../theme';
 
 type Props = {
   driver: Driver;
-  onMessage: () => void;
-  onCall: () => void;
-  framed?: boolean; // false when it sits inside another card
+  // Optional: only live trips can contact the driver. Leave these out and the buttons disappear.
+  onMessage?: () => void;
+  onCall?: () => void;
+  framed?: boolean;
 };
 
 export function DriverCard({ driver, onMessage, onCall, framed = true }: Props) {
@@ -27,12 +28,16 @@ export function DriverCard({ driver, onMessage, onCall, framed = true }: Props) 
         <Text style={styles.meta}>{driver.vehicle} · {driver.plate}</Text>
       </View>
 
-      <Pressable style={styles.iconButton} onPress={onMessage} accessibilityLabel={`Message ${driver.firstName}`}>
-        <Icon name="message" size={20} />
-      </Pressable>
-      <Pressable style={[styles.iconButton, styles.call]} onPress={onCall} accessibilityLabel={`Call ${driver.firstName}`}>
-        <Icon name="phone" size={20} color={colors.text.onAccent} />
-      </Pressable>
+      {onMessage && (
+        <Pressable style={styles.iconButton} onPress={onMessage} accessibilityLabel={`Message ${driver.firstName}`}>
+          <Icon name="message" size={20} />
+        </Pressable>
+      )}
+      {onCall && (
+        <Pressable style={[styles.iconButton, styles.call]} onPress={onCall} accessibilityLabel={`Call ${driver.firstName}`}>
+          <Icon name="phone" size={20} color={colors.text.onAccent} />
+        </Pressable>
+      )}
     </View>
   );
 }
