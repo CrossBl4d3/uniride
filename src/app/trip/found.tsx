@@ -21,8 +21,8 @@ export default function DriverFound() {
       : `${naira(trip.total)} was paid from your ${trip.paidWith}.`;
 
   const trackRide = () => {
-    trip.track();  // starts the "driver on the way" part of the simulation
-    router.back(); // back to the live trip map
+    trip.track();
+    router.back();
   };
 
   return (
@@ -40,7 +40,7 @@ export default function DriverFound() {
           <DriverCard
             driver={driver}
             framed={false}
-            onMessage={() => Alert.alert('Chat', 'Chatting with your driver comes in Stage 7.')}
+            onMessage={() => router.push('/trip/chat')}
             onCall={() => Linking.openURL(`tel:${driver.phone}`)}
           />
           <View style={styles.divider} />

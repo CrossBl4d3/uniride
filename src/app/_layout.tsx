@@ -15,7 +15,6 @@ import { colors } from '../theme';
 
 SplashScreen.preventAutoHideAsync();
 
-// Screens with a × close button slide up from the bottom; swipe down to dismiss (iPhone).
 const slideUp = {
   animation: 'slide_from_bottom',
   gestureEnabled: true,
@@ -49,14 +48,10 @@ export default function RootLayout() {
         <Stack.Screen name="campus" options={slideUp} />
         <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
 
-        {/* A live trip can't be swiped away: you cancel or finish it. */}
         <Stack.Screen name="trip/index" options={{ gestureEnabled: false, animation: 'slide_from_bottom' }} />
         <Stack.Screen name="trip/found" options={{ gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="trip/rate" options={{ gestureEnabled: false, animation: 'fade' }} />
         <Stack.Screen name="trip/no-drivers" options={{ gestureEnabled: false, animation: 'fade' }} />
-
-        {/* See-through screen: the trip map stays visible behind the cancel sheet.
-            animation 'none' because the sheet animates itself. */}
         <Stack.Screen
           name="trip/cancel"
           options={{
@@ -66,6 +61,9 @@ export default function RootLayout() {
             contentStyle: { backgroundColor: 'transparent' },
           }}
         />
+
+        {/* Emergency: slides up, can't be swiped away by accident. Close with "I'm safe". */}
+        <Stack.Screen name="sos" options={{ animation: 'slide_from_bottom', gestureEnabled: false }} />
       </Stack>
     </>
   );

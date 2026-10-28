@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import {
   View, Text, ScrollView, Pressable, Switch, Animated, Easing, KeyboardAvoidingView, Platform, StyleSheet, Alert, Linking,
 } from 'react-native';
+import { router } from 'expo-router';
 import { TopBar } from '../components/TopBar';
 import { TextField } from '../components/TextField';
 import { Button } from '../components/Button';
@@ -11,30 +12,22 @@ import { Icon } from '../components/Icon';
 import { useSafety, Contact } from '../store/useSafety';
 import { colors, space, radius, type } from '../theme';
 
-const HOLD_MS = 2000; // how long to hold the SOS button
+const HOLD_MS = 2000;
 
 export default function SafetyToolkit() {
   const safety = useSafety();
 
-  // ---- Hold-to-activate SOS ----
-  const hold = useRef(new Animated.Value(0)).current; // 0 → 1 as you hold
+  const hold = useRef(new Animated.Value(0)).current;
   const [holding, setHolding] = useState(false);
 
-  const triggerSOS = () =>
-    // Demo only: the real app would call campus security and alert your contacts.
-    // Never wire a test button to a real emergency number.
-    Alert.alert(
-      'SOS (demo)',
-      `In the real app, this calls campus security and sends your live location to ${safety.contacts.length} trusted contact${
-        safety.contacts.length === 1 ? '' : 's'
-      }.`
-    );
+  // Held for the full 2 seconds: open the Emergency SOS screen.
+  const triggerSOS = () => router.push('/sos');
 
   const startHold = () => {
     setHolding(true);
     Animated.timing(hold, { toValue: 1, duration: HOLD_MS, easing: Easing.linear, useNativeDriver: false }).start(
       ({ finished }) => {
-        if (!finished) return; // let go too early
+        if (!finished) return;
         setHolding(false);
         hold.setValue(0);
         triggerSOS();
@@ -47,11 +40,10 @@ export default function SafetyToolkit() {
     Animated.timing(hold, { toValue: 0, duration: 200, useNativeDriver: false }).start();
   };
 
-  // ---- Trusted contacts ----
   const [adding, setAdding] = useState(false);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
-  const canAdd = name.trim() !== '' && phone.replace(/\D/g, '').length >= 10; // at least 10 digits
+  const canAdd = name.trim() !== '' && phone.replace(/\D/g, '').length >= 10;
 
   const saveContact = () => {
     safety.addContact(name.trim(), phone.trim());
@@ -72,7 +64,6 @@ export default function SafetyToolkit() {
       <TopBar title="Safety toolkit" />
 
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {/* ---------- Emergency SOS ---------- */}
         <View style={styles.sosCard}>
           <View style={styles.sosTitleRow}>
             <Icon name="sos" size={22} color={colors.status.error} />
@@ -92,7 +83,6 @@ export default function SafetyToolkit() {
           </Pressable>
         </View>
 
-        {/* ---------- Trusted contacts ---------- */}
         <Text style={styles.overline}>Trusted contacts</Text>
         <View style={styles.card}>
           {safety.contacts.map((c) => (
@@ -124,7 +114,6 @@ export default function SafetyToolkit() {
           )}
         </View>
 
-        {/* ---------- On every ride ---------- */}
         <Text style={styles.overline}>On every ride</Text>
         <View style={styles.card}>
           <View style={[styles.switchRow, styles.divider]}>
@@ -178,7 +167,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: space.sm,
     borderRadius: radius.pill,
-    overflow: 'hidden', // keeps the fill inside the rounded shape
+    overflow: 'hidden',
     backgroundColor: 'rgba(255, 107, 94, 0.18)',
   },
   holdFill: {

@@ -1,17 +1,19 @@
 // src/app/trip/index.tsx — 15 Finding · 17 On the way · 18 Arrived · 19 Trip in progress
 // ONE map screen; the sheet and markers change with the trip's status.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, Animated, Easing, Linking, Share, BackHandler } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, Easing, Linking, Share, BackHandler } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../components/Icon';
+import { Chip } from '../../components/Chip';
 import { Button } from '../../components/Button';
 import { MapPin } from '../../components/MapPin';
 import { RiderMarker, VehicleMarker } from '../../components/MapMarkers';
 import { DriverCard } from '../../components/DriverCard';
 import { ProgressBar } from '../../components/ProgressBar';
 import { useTrip } from '../../store/useTrip';
+import { useSafety } from '../../store/useSafety';
 import { pointAlong, LatLng } from '../../utils/route';
 import { clockAt, clockIn, naira } from '../../utils/format';
 import { darkMapStyle } from '../../theme/mapStyle';
@@ -83,6 +85,9 @@ export default function Trip() {
 
   const trip = useTrip();
   const { status, route, approach, driver, progress } = trip;
+  const shareTrips = useSafety((s) => s.shareTrips);
+  const tripPin = useSafety((s) => s.tripPin);
+  const contacts = useSafety((s) => s.contacts);
 
   const pickup = route[0];
   const destination = route[route.length - 1];
@@ -91,8 +96,9 @@ export default function Trip() {
   const canCancel = status === 'searching' || status === 'found' || status === 'arriving' || status === 'arrived';
   const openCancel = () => router.push('/trip/cancel');
 
-  // React to status changes, but only while THIS screen is showing.
-  // (If the cancel sheet is open, we wait until it closes.)
+  // Who automatically gets a live link (the "Share trips automatically" switch).
+  const sharedWith = shareTrips ? contacts.filter((c) => c.everyTrip).map((c) => c.name.split(' ')[0]) : [];
+
   useFocusEffect(
     useCallback(() => {
       if (status === 'found') router.push('/trip/found');
@@ -101,7 +107,6 @@ export default function Trip() {
     }, [status])
   );
 
-  // Android back button: offer to cancel; never silently drop a live trip.
   useFocusEffect(
     useCallback(() => {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -141,8 +146,8 @@ export default function Trip() {
   const arrival = trip.arriveAt ? clockAt(trip.arriveAt) : clockIn(etaToYou + trip.tripMin);
 
   const call = () => driver && Linking.openURL(`tel:${driver.phone}`);
-  const message = () => Alert.alert('Chat', 'Chatting with your driver comes in Stage 7.');
-  const safety = () => Alert.alert('Safety', 'The safety toolkit comes in Stage 7.');
+  const message = () => router.push('/trip/chat');
+  const safety = () => router.push('/safety');
   const shareTrip = () =>
     Share.share({
       message: `I'm on a UniRide ${rideName} to ${trip.destinationName}. Driver: ${driver?.name ?? '—'}, ${
@@ -155,6 +160,9 @@ export default function Trip() {
     : status === 'arrived' ? `Your ${rideName} is here`
     : status === 'onTrip' ? 'On trip'
     : null;
+
+  const sharedChip =
+    sharedWith.length > 0 ? <Chip icon="share" label={`Shared live with ${sharedWith.join(', ')}`} /> : null;
 
   return (
     <View style={styles.screen}>
@@ -211,7 +219,7 @@ export default function Trip() {
           </View>
         )}
         {status === 'onTrip' && (
-          <Pressable style={styles.sos} onPress={() => Alert.alert('Emergency SOS', 'The SOS screen comes in Stage 7.')}>
+          <Pressable style={styles.sos} onPress={() => router.push('/sos')} accessibilityLabel="Emergency SOS">
             <Icon name="sos" size={16} color={colors.status.error} />
             <Text style={styles.sosText}>SOS</Text>
           </Pressable>
@@ -251,6 +259,7 @@ export default function Trip() {
                 <Text style={styles.plateSub}>{driver.color}</Text>
               </View>
             </View>
+            {sharedChip}
             <DriverCard driver={driver} onMessage={message} onCall={call} />
             <View style={styles.actions}>
               <Button label="Share" size="small" variant="secondary" icon={<Icon name="share" size={16} />} onPress={shareTrip} style={styles.action} />
@@ -263,16 +272,24 @@ export default function Trip() {
         {status === 'arrived' && driver && (
           <>
             <Text style={styles.title}>Meet {driver.firstName} at {trip.pickupName}</Text>
-            <Text style={styles.body}>
-              Share this PIN with your driver to start the trip. Never share it before you get in.
-            </Text>
-            <View style={styles.pinRow}>
-              {trip.pin.split('').map((digit, i) => (
-                <View key={i} style={styles.pinCell}>
-                  <Text style={styles.pinDigit}>{digit}</Text>
+            {tripPin ? (
+              <>
+                <Text style={styles.body}>
+                  Share this PIN with your driver to start the trip. Never share it before you get in.
+                </Text>
+                <View style={styles.pinRow}>
+                  {trip.pin.split('').map((digit, i) => (
+                    <View key={i} style={styles.pinCell}>
+                      <Text style={styles.pinDigit}>{digit}</Text>
+                    </View>
+                  ))}
                 </View>
-              ))}
-            </View>
+              </>
+            ) : (
+              <Text style={styles.body}>
+                Check the plate is <Text style={styles.value}>{driver.plate}</Text> ({driver.color}) before you get in.
+              </Text>
+            )}
             <DriverCard driver={driver} onMessage={message} onCall={call} />
             <Button
               label={`Message ${driver.firstName}`}
@@ -291,6 +308,7 @@ export default function Trip() {
               {minutesLeft} min · {kmLeft} km to {trip.destinationName}
             </Text>
             <ProgressBar value={progress} />
+            {sharedChip}
             <RouteSummary pickup={trip.pickupName} destination={trip.destinationName} />
             <View style={styles.actions}>
               <Button label="Share trip" size="small" variant="secondary" icon={<Icon name="share" size={16} />} onPress={shareTrip} style={styles.action} />
