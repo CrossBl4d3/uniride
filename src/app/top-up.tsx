@@ -9,34 +9,44 @@ import { Keypad } from '../components/Keypad';
 import { Icon, IconName } from '../components/Icon';
 import { Radio } from '../components/Radio';
 import { useWallet } from '../store/useWallet';
+import { useDefaultCard, cardLabel } from '../store/useCards';
 import { naira } from '../utils/format';
 import { colors, space, radius, type } from '../theme';
 
 const QUICK_AMOUNTS = [500, 1000, 2000, 5000];
 const MIN = 100;
-const MAX = 100_000; // the _ is just a digit separator for readability
+const MAX = 100_000;
 
 type Method = 'card' | 'bank';
-const methods: { id: Method; title: string; subtitle: string; icon: IconName }[] = [
-  { id: 'card', title: 'Debit card', subtitle: 'Visa •••• 4417', icon: 'card' },
-  { id: 'bank', title: 'Bank transfer', subtitle: 'Get a one-time account number', icon: 'bank' },
-];
 
 export default function TopUp() {
   const insets = useSafeAreaInsets();
   const balance = useWallet((s) => s.balance);
   const addToWallet = useWallet((s) => s.add);
+  const card = useDefaultCard();
   const [amount, setAmount] = useState(2000);
-  const [method, setMethod] = useState<Method>('card');
+  const [method, setMethod] = useState<Method>(card ? 'card' : 'bank');
   const [busy, setBusy] = useState(false);
 
-  // The amount is a NUMBER, so typing is maths: 200 → tap 5 → 200 × 10 + 5 = 2005.
+  const methods: { id: Method; title: string; subtitle: string; icon: IconName }[] = [
+    { id: 'card', title: 'Debit card', subtitle: card ? cardLabel(card) : 'Add a card to use this', icon: 'card' },
+    { id: 'bank', title: 'Bank transfer', subtitle: 'Get a one-time account number', icon: 'bank' },
+  ];
+
+  const pick = (m: Method) => {
+    if (m === 'card' && !card) {
+      router.push('/add-card'); // no card yet: go and add one
+      return;
+    }
+    setMethod(m);
+  };
+
   const addDigit = (d: string) =>
     setAmount((prev) => {
       const next = prev * 10 + Number(d);
-      return next > MAX ? prev : next; // ignore digits that would go over the limit
+      return next > MAX ? prev : next;
     });
-  const removeDigit = () => setAmount((prev) => Math.floor(prev / 10)); // 2005 → 200
+  const removeDigit = () => setAmount((prev) => Math.floor(prev / 10));
 
   const valid = amount >= MIN;
 
@@ -46,8 +56,7 @@ export default function TopUp() {
   };
 
   const topUp = () => {
-    if (method === 'bank') {
-      // Real banks give you a temporary account to send to. We pretend.
+    if (method === 'bank' || !card) {
       Alert.alert(
         'Transfer to this account',
         `Send ${naira(amount)} to:\n\n9912 345 678\nWema Bank · UniRide Wallet\n\nThis account number only works for this top-up.`,
@@ -61,7 +70,7 @@ export default function TopUp() {
     setBusy(true);
     setTimeout(() => {
       setBusy(false);
-      finish('Visa •••• 4417');
+      finish(cardLabel(card));
     }, 1500);
   };
 
@@ -89,11 +98,11 @@ export default function TopUp() {
         <Text style={styles.overline}>Pay with</Text>
         <View style={{ gap: space.sm }}>
           {methods.map((m) => {
-            const selected = m.id === method;
+            const selected = m.id === method && (m.id !== 'card' || !!card);
             return (
               <Pressable
                 key={m.id}
-                onPress={() => setMethod(m.id)}
+                onPress={() => pick(m.id)}
                 accessibilityRole="radio"
                 accessibilityState={{ selected }}
                 style={[styles.method, selected && styles.methodSelected]}

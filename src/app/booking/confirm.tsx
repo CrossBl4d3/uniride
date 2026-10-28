@@ -15,6 +15,7 @@ import { useBooking } from '../../store/useBooking';
 import { useTrip } from '../../store/useTrip';
 import { useUI } from '../../store/useUI';
 import { useWallet } from '../../store/useWallet';
+import { useDefaultCard, cardLabel } from '../../store/useCards';
 import { parseKm, fareFor, tripMinutes, priceBreakdown } from '../../utils/fare';
 import { clockIn, naira } from '../../utils/format';
 import { routeTo } from '../../utils/route';
@@ -34,6 +35,7 @@ export default function ConfirmAndPay() {
   const startTrip = useTrip((s) => s.start);
   const setSheetExpanded = useUI((s) => s.setSheetExpanded);
   const balance = useWallet((s) => s.balance);
+  const card = useDefaultCard();
 
   if (!destination) return null;
 
@@ -44,8 +46,15 @@ export default function ConfirmAndPay() {
   const campus = campuses.find((c) => c.id === campusId) ?? campuses[0];
   const discountCode = `${campus.id.toUpperCase()}-STUDENT`;
   const price = priceBreakdown(fareFor(ride.id, km), isStudent);
-  const walletTooLow = paymentMethod === 'wallet' && balance < price.total;
-  const method = paymentMethods.find((m) => m.id === paymentMethod) ?? paymentMethods[0];
+
+  // No card saved? Then "Debit card" isn't an option, and the wallet is used instead.
+  const available = paymentMethods.filter((m) => m.id !== 'card' || card);
+  const chosen = paymentMethod === 'card' && !card ? 'wallet' : paymentMethod;
+  const method = available.find((m) => m.id === chosen) ?? available[0];
+  const walletTooLow = chosen === 'wallet' && balance < price.total;
+
+  const subtitleFor = (id: string, fallback: string) =>
+    id === 'wallet' ? `Balance ${naira(balance)}` : id === 'card' && card ? `${cardLabel(card)} · Expires ${card.expiry}` : fallback;
 
   const pay = () => {
     setPaying(true);
@@ -107,10 +116,10 @@ export default function ConfirmAndPay() {
 
         <Text style={styles.overline}>Payment method</Text>
         <View style={styles.methods}>
-          {paymentMethods.map((m) => {
-            const selected = m.id === paymentMethod;
+          {available.map((m) => {
+            const selected = m.id === chosen;
             const lowBalance = m.id === 'wallet' && balance < price.total;
-            const subtitle = m.id === 'wallet' ? `Balance ${naira(balance)}` : m.subtitle;
+            const subtitle = subtitleFor(m.id, m.subtitle);
             return (
               <Pressable
                 key={m.id}
@@ -132,6 +141,12 @@ export default function ConfirmAndPay() {
               </Pressable>
             );
           })}
+          {!card && (
+            <Pressable style={styles.addCard} onPress={() => router.push('/add-card')}>
+              <Icon name="plus" size={18} color={colors.text.accent} />
+              <Text style={styles.addCardText}>Add a debit card</Text>
+            </Pressable>
+          )}
         </View>
 
         <View style={[styles.card, styles.fare]}>
@@ -231,6 +246,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  addCard: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.sm, paddingHorizontal: space.lg },
+  addCardText: { ...type.bodyStrong, color: colors.text.accent },
   fare: { gap: space.sm, borderRadius: 20 },
   fareRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   fareLabel: { ...type.body, color: colors.text.secondary, flexShrink: 1 },

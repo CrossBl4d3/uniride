@@ -5,6 +5,7 @@ import { useRides } from './useRides';
 import { useWallet } from './useWallet';
 import { useSafety } from './useSafety';
 import { usePlaces } from './usePlaces';
+import { useCards } from './useCards';
 import { useBooking } from './useBooking';
 import { useTrip } from './useTrip';
 
@@ -14,7 +15,7 @@ type SavedStore = {
     onFinishHydration: (fn: () => void) => () => void;
   };
 };
-const savedStores: SavedStore[] = [useUser, useRides, useWallet, useSafety, usePlaces];
+const savedStores: SavedStore[] = [useUser, useRides, useWallet, useSafety, usePlaces, useCards];
 
 export function waitForSavedData() {
   return Promise.all(
@@ -39,4 +40,5 @@ export function signOutEverywhere() {
   useWallet.getState().reset();
   useSafety.getState().reset();
   usePlaces.getState().reset();
+  useCards.getState().reset();
 }

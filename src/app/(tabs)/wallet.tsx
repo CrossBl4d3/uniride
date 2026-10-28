@@ -1,5 +1,5 @@
 // src/app/(tabs)/wallet.tsx — 25 Wallet
-import { ScrollView, View, Text, StyleSheet, Alert } from 'react-native';
+import { ScrollView, View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon, IconName } from '../../components/Icon';
@@ -26,7 +26,6 @@ export default function Wallet() {
   const activity = useWallet((s) => s.activity);
   const email = useUser((s) => s.email);
 
-  // "≈ 8 Keke rides": how many of the cheapest Keke trips the balance covers.
   const isStudent = email.toLowerCase().endsWith('.edu.ng');
   const shortestKeke = priceBreakdown(fareFor('keke', 1), isStudent).total;
   const ridesWorth = Math.floor(balance / shortestKeke);
@@ -62,7 +61,7 @@ export default function Wallet() {
             size="small"
             variant="secondary"
             icon={<Icon name="card" size={16} />}
-            onPress={() => Alert.alert('Cards & banks', 'Managing cards comes in Stage 7.')}
+            onPress={() => router.push('/payment-methods')}
             style={styles.half}
           />
         </View>

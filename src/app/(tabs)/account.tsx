@@ -9,6 +9,7 @@ import { useTabBarHeight } from '../../components/TabBar';
 import { campuses } from '../../data/campuses';
 import { useUser } from '../../store/useUser';
 import { usePlaces } from '../../store/usePlaces';
+import { useCards, cardLabel } from '../../store/useCards';
 import { signOutEverywhere } from '../../store/session';
 import { formatPhone } from '../../utils/format';
 import { colors, space, radius, type } from '../../theme';
@@ -18,6 +19,7 @@ export default function Account() {
   const tabBarHeight = useTabBarHeight();
   const user = useUser();
   const saved = usePlaces((s) => s.saved);
+  const cards = useCards((s) => s.cards);
 
   const campus = campuses.find((c) => c.id === user.campusId);
   const isStudent = user.email.toLowerCase().endsWith('.edu.ng');
@@ -72,9 +74,9 @@ export default function Account() {
         <ListRow
           icon="card"
           title="Payment methods"
-          subtitle="Wallet, Visa •••• 4417"
+          subtitle={['Wallet', ...cards.map(cardLabel)].join(', ')}
           chevron
-          onPress={() => Alert.alert('Payment methods', 'Coming in the next part.')}
+          onPress={() => router.push('/payment-methods')}
         />
         <ListRow
           icon="school"
