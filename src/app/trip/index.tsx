@@ -1,9 +1,9 @@
 // src/app/trip/index.tsx — 15 Finding · 17 On the way · 18 Arrived · 19 Trip in progress
 // ONE map screen; the sheet and markers change with the trip's status.
-import { useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, Animated, Easing, Linking, Share } from 'react-native';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { View, Text, Pressable, StyleSheet, Alert, Animated, Easing, Linking, Share, BackHandler } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../components/Icon';
 import { Button } from '../../components/Button';
@@ -12,13 +12,11 @@ import { RiderMarker, VehicleMarker } from '../../components/MapMarkers';
 import { DriverCard } from '../../components/DriverCard';
 import { ProgressBar } from '../../components/ProgressBar';
 import { useTrip } from '../../store/useTrip';
-import { useBooking } from '../../store/useBooking';
 import { pointAlong, LatLng } from '../../utils/route';
-import { clockIn, naira } from '../../utils/format';
+import { clockAt, clockIn, naira } from '../../utils/format';
 import { darkMapStyle } from '../../theme/mapStyle';
 import { colors, space, radius, type } from '../../theme';
 
-// Blue dot with a ring that keeps growing and fading: "searching around you".
 function SearchPulse() {
   const pulse = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -45,7 +43,6 @@ function SearchPulse() {
   );
 }
 
-// Pickup → Destination card, used while searching and during the trip.
 function RouteSummary({ pickup, destination, footer, footerRight }: {
   pickup: string; destination: string; footer?: string; footerRight?: string;
 }) {
@@ -84,37 +81,37 @@ export default function Trip() {
   const [mapReady, setMapReady] = useState(false);
   const [sheetHeight, setSheetHeight] = useState(0);
 
-  const trip = useTrip(); // this screen uses almost everything in the store
-  const resetBooking = useBooking((s) => s.reset);
+  const trip = useTrip();
   const { status, route, approach, driver, progress } = trip;
 
   const pickup = route[0];
   const destination = route[route.length - 1];
   const rideName = trip.rideType === 'keke' ? 'Keke' : 'Cab';
   const paidCash = trip.paidWith === 'Cash';
+  const canCancel = status === 'searching' || status === 'found' || status === 'arriving' || status === 'arrived';
+  const openCancel = () => router.push('/trip/cancel');
 
-  // Leave the trip and go back to Home with a clean slate.
-  const leaveTrip = () => {
-    trip.reset();
-    resetBooking();
-    router.back();
-  };
+  // React to status changes, but only while THIS screen is showing.
+  // (If the cancel sheet is open, we wait until it closes.)
+  useFocusEffect(
+    useCallback(() => {
+      if (status === 'found') router.push('/trip/found');
+      if (status === 'complete') router.replace('/trip/rate');
+      if (status === 'noDrivers') router.replace('/trip/no-drivers');
+    }, [status])
+  );
 
-  // React to status changes. The STORE changes the status; the SCREEN decides what that means.
-  useEffect(() => {
-    if (status === 'found') router.push('/trip/found');
-    if (status === 'complete') {
-      Alert.alert('You’ve arrived!', 'Rating your driver comes in Stage 5, part 2.', [{ text: 'OK', onPress: leaveTrip }]);
-    }
-    if (status === 'noDrivers') {
-      Alert.alert('No drivers nearby', 'That screen comes in part 2. Your payment would be refunded.', [
-        { text: 'OK', onPress: leaveTrip },
-      ]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status]);
+  // Android back button: offer to cancel; never silently drop a live trip.
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        if (canCancel) router.push('/trip/cancel');
+        return true;
+      });
+      return () => sub.remove();
+    }, [canCancel])
+  );
 
-  // Frame the map for each stage: the driver's approach, the trip, or just around you.
   useEffect(() => {
     if (!mapReady || !sheetHeight || !pickup) return;
     const padding = { top: insets.top + 120, bottom: sheetHeight + 40, left: 70, right: 70 };
@@ -132,7 +129,6 @@ export default function Trip() {
 
   if (!pickup || status === 'idle') return null;
 
-  // Where the Keke is right now.
   const vehicle: LatLng | null =
     status === 'arriving' ? pointAlong(approach, progress)
     : status === 'arrived' ? pickup
@@ -142,28 +138,18 @@ export default function Trip() {
   const etaToYou = Math.max(1, Math.ceil((1 - progress) * trip.awayMin));
   const minutesLeft = Math.max(1, Math.ceil((1 - progress) * trip.tripMin));
   const kmLeft = ((1 - progress) * trip.km).toFixed(1);
+  const arrival = trip.arriveAt ? clockAt(trip.arriveAt) : clockIn(etaToYou + trip.tripMin);
 
-  // ---- Actions ----
-  const call = () => driver && Linking.openURL(`tel:${driver.phone}`); // opens the phone's dialler
+  const call = () => driver && Linking.openURL(`tel:${driver.phone}`);
   const message = () => Alert.alert('Chat', 'Chatting with your driver comes in Stage 7.');
   const safety = () => Alert.alert('Safety', 'The safety toolkit comes in Stage 7.');
   const shareTrip = () =>
     Share.share({
       message: `I'm on a UniRide ${rideName} to ${trip.destinationName}. Driver: ${driver?.name ?? '—'}, ${
         driver?.plate ?? ''
-      }. Arriving around ${clockIn(minutesLeft)}.`,
+      }. Arriving around ${arrival}.`,
     });
-  const confirmCancel = () =>
-    Alert.alert(
-      'Cancel this ride?',
-      paidCash ? 'You won’t be charged.' : `${naira(trip.total)} will go back to your ${trip.paidWith}.`,
-      [
-        { text: 'Keep my ride', style: 'cancel' },
-        { text: 'Cancel ride', style: 'destructive', onPress: leaveTrip },
-      ]
-    );
 
-  // ---- The small pill at the top ----
   const topText =
     status === 'arriving' ? (paidCash ? `Pay ${naira(trip.total)} in cash` : `Payment confirmed · ${naira(trip.total)}`)
     : status === 'arrived' ? `Your ${rideName} is here`
@@ -200,7 +186,6 @@ export default function Trip() {
         )}
 
         {(status === 'searching' || status === 'found') && (
-          // tracksViewChanges stays ON here so the pulse animation is redrawn.
           <Marker coordinate={pickup} anchor={{ x: 0.5, y: 0.5 }}>
             <SearchPulse />
           </Marker>
@@ -239,7 +224,6 @@ export default function Trip() {
       >
         <View style={styles.handle} />
 
-        {/* ---------- 15 Finding your driver ---------- */}
         {(status === 'searching' || status === 'found') && (
           <>
             <Text style={styles.title}>Finding your driver…</Text>
@@ -251,11 +235,10 @@ export default function Trip() {
               footer={`${rideName} · ${naira(trip.total)} ${paidCash ? 'in cash' : `paid from ${trip.paidWith}`}`}
               footerRight={`${trip.tripMin} min`}
             />
-            <Button label="Cancel request" variant="danger" fullWidth onPress={confirmCancel} />
+            <Button label="Cancel request" variant="danger" fullWidth onPress={openCancel} />
           </>
         )}
 
-        {/* ---------- 17 Driver on the way ---------- */}
         {status === 'arriving' && driver && (
           <>
             <View style={styles.headRow}>
@@ -272,12 +255,11 @@ export default function Trip() {
             <View style={styles.actions}>
               <Button label="Share" size="small" variant="secondary" icon={<Icon name="share" size={16} />} onPress={shareTrip} style={styles.action} />
               <Button label="Safety" size="small" variant="secondary" icon={<Icon name="shield" size={16} />} onPress={safety} style={styles.action} />
-              <Button label="Cancel" size="small" variant="danger" icon={<Icon name="close" size={16} color={colors.status.error} />} onPress={confirmCancel} style={styles.action} />
+              <Button label="Cancel" size="small" variant="danger" icon={<Icon name="close" size={16} color={colors.status.error} />} onPress={openCancel} style={styles.action} />
             </View>
           </>
         )}
 
-        {/* ---------- 18 Driver has arrived ---------- */}
         {status === 'arrived' && driver && (
           <>
             <Text style={styles.title}>Meet {driver.firstName} at {trip.pickupName}</Text>
@@ -302,10 +284,9 @@ export default function Trip() {
           </>
         )}
 
-        {/* ---------- 19 Trip in progress ---------- */}
         {status === 'onTrip' && driver && (
           <>
-            <Text style={styles.title}>Arriving at {clockIn(minutesLeft)}</Text>
+            <Text style={styles.title}>Arriving at {arrival}</Text>
             <Text style={styles.body}>
               {minutesLeft} min · {kmLeft} km to {trip.destinationName}
             </Text>

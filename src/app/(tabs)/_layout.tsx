@@ -1,72 +1,15 @@
-// src/app/_layout.tsx
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
-import {
-  useFonts,
-  Poppins_400Regular,
-  Poppins_500Medium,
-  Poppins_600SemiBold,
-  Poppins_700Bold,
-} from '@expo-google-fonts/poppins';
-import { KonkhmerSleokchher_400Regular } from '@expo-google-fonts/konkhmer-sleokchher';
-import { colors } from '../theme';
+// src/app/(tabs)/_layout.tsx
+// Every screen in this folder becomes a tab. The order here is the order in the bar.
+import { Tabs } from 'expo-router';
+import { TabBar } from '../../components/TabBar';
 
-SplashScreen.preventAutoHideAsync();
-
-// Screens with a × close button slide up from the bottom; swipe down to dismiss (iPhone).
-const slideUp = {
-  animation: 'slide_from_bottom',
-  gestureEnabled: true,
-  gestureDirection: 'vertical',
-} as const;
-
-export default function RootLayout() {
-  const [loaded] = useFonts({
-    Poppins_400Regular,
-    Poppins_500Medium,
-    Poppins_600SemiBold,
-    Poppins_700Bold,
-    KonkhmerSleokchher_400Regular,
-  });
-
-  useEffect(() => {
-    if (loaded) SplashScreen.hideAsync();
-  }, [loaded]);
-
-  if (!loaded) return null;
-
+export default function TabsLayout() {
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.bg.screen },
-        }}
-      >
-        <Stack.Screen name="campus" options={slideUp} />
-        <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
-
-        {/* A live trip can't be swiped away: you cancel or finish it. */}
-        <Stack.Screen name="trip/index" options={{ gestureEnabled: false, animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="trip/found" options={{ gestureEnabled: false, animation: 'fade' }} />
-        <Stack.Screen name="trip/rate" options={{ gestureEnabled: false, animation: 'fade' }} />
-        <Stack.Screen name="trip/no-drivers" options={{ gestureEnabled: false, animation: 'fade' }} />
-
-        {/* See-through screen: the trip map stays visible behind the cancel sheet.
-            animation 'none' because the sheet animates itself. */}
-        <Stack.Screen
-          name="trip/cancel"
-          options={{
-            presentation: 'transparentModal',
-            animation: 'none',
-            gestureEnabled: false,
-            contentStyle: { backgroundColor: 'transparent' },
-          }}
-        />
-      </Stack>
-    </>
+    <Tabs tabBar={(props) => <TabBar {...props} />} screenOptions={{ headerShown: false }}>
+      <Tabs.Screen name="home" />
+      <Tabs.Screen name="rides" />
+      <Tabs.Screen name="wallet" />
+      <Tabs.Screen name="account" />
+    </Tabs>
   );
 }
