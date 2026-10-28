@@ -9,11 +9,12 @@ import { Icon } from '../../components/Icon';
 import { Radio } from '../../components/Radio';
 import { campuses } from '../../data/campuses';
 import { rideTypes } from '../../data/rides';
-import { paymentMethods, WALLET_BALANCE } from '../../data/payments';
+import { paymentMethods } from '../../data/payments';
 import { useUser } from '../../store/useUser';
 import { useBooking } from '../../store/useBooking';
 import { useTrip } from '../../store/useTrip';
 import { useUI } from '../../store/useUI';
+import { useWallet } from '../../store/useWallet';
 import { parseKm, fareFor, tripMinutes, priceBreakdown } from '../../utils/fare';
 import { clockIn, naira } from '../../utils/format';
 import { routeTo } from '../../utils/route';
@@ -32,6 +33,7 @@ export default function ConfirmAndPay() {
   const setPaymentMethod = useBooking((s) => s.setPaymentMethod);
   const startTrip = useTrip((s) => s.start);
   const setSheetExpanded = useUI((s) => s.setSheetExpanded);
+  const balance = useWallet((s) => s.balance);
 
   if (!destination) return null;
 
@@ -42,7 +44,7 @@ export default function ConfirmAndPay() {
   const campus = campuses.find((c) => c.id === campusId) ?? campuses[0];
   const discountCode = `${campus.id.toUpperCase()}-STUDENT`;
   const price = priceBreakdown(fareFor(ride.id, km), isStudent);
-  const walletTooLow = paymentMethod === 'wallet' && WALLET_BALANCE < price.total;
+  const walletTooLow = paymentMethod === 'wallet' && balance < price.total;
   const method = paymentMethods.find((m) => m.id === paymentMethod) ?? paymentMethods[0];
 
   const pay = () => {
@@ -107,7 +109,8 @@ export default function ConfirmAndPay() {
         <View style={styles.methods}>
           {paymentMethods.map((m) => {
             const selected = m.id === paymentMethod;
-            const lowBalance = m.id === 'wallet' && WALLET_BALANCE < price.total;
+            const lowBalance = m.id === 'wallet' && balance < price.total;
+            const subtitle = m.id === 'wallet' ? `Balance ${naira(balance)}` : m.subtitle;
             return (
               <Pressable
                 key={m.id}
@@ -122,7 +125,7 @@ export default function ConfirmAndPay() {
                 <View style={{ flex: 1 }}>
                   <Text style={styles.value}>{m.title}</Text>
                   <Text style={[styles.label, lowBalance && { color: colors.status.error }]}>
-                    {lowBalance ? `${m.subtitle} · not enough for this trip` : m.subtitle}
+                    {lowBalance ? `${subtitle} · not enough for this trip` : subtitle}
                   </Text>
                 </View>
                 <Radio selected={selected} />
@@ -154,13 +157,21 @@ export default function ConfirmAndPay() {
       </ScrollView>
 
       <View style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}>
-        <Button
-          label={walletTooLow ? 'Top up your wallet to pay' : method.id === 'cash' ? 'Book ride' : `Pay ${naira(price.total)}`}
-          fullWidth
-          loading={paying}
-          disabled={walletTooLow}
-          onPress={pay}
-        />
+        {walletTooLow ? (
+          <Button
+            label={`Top up wallet · need ${naira(price.total - balance)} more`}
+            fullWidth
+            icon={<Icon name="plus" size={18} color={colors.text.onAccent} />}
+            onPress={() => router.push('/top-up')}
+          />
+        ) : (
+          <Button
+            label={method.id === 'cash' ? 'Book ride' : `Pay ${naira(price.total)}`}
+            fullWidth
+            loading={paying}
+            onPress={pay}
+          />
+        )}
         <View style={styles.secure}>
           <Icon name="shield" size={14} color={colors.icon.muted} />
           <Text style={styles.label}>Payments are encrypted and processed securely</Text>

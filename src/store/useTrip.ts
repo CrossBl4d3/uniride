@@ -7,6 +7,7 @@ import { RideTypeId } from '../data/rides';
 import { LatLng } from '../utils/route';
 import { useBooking } from './useBooking';
 import { useRides, RideRecord } from './useRides';
+import { useWallet } from './useWallet';
 
 export type TripStatus =
   | 'idle'
@@ -27,6 +28,8 @@ const TICK_MS = 500;
 export const NO_DRIVERS_CHANCE = 0;
 export const FREE_CANCEL_SECONDS = 120;
 export const CANCEL_FEE = 100;
+
+const WALLET = 'UniRide Wallet';
 
 let timeout: ReturnType<typeof setTimeout> | null = null;
 let interval: ReturnType<typeof setInterval> | null = null;
@@ -99,7 +102,6 @@ const detailsOf = (s: TripDetails): TripDetails => ({
   awayMin: s.awayMin,
 });
 
-// Turn the live trip into a history entry.
 const recordOf = (s: TripState, status: RideRecord['status'], charged: number): RideRecord => ({
   id: s.receipt.replace('#', ''),
   status,
@@ -119,6 +121,12 @@ const recordOf = (s: TripState, status: RideRecord['status'], charged: number): 
   driver: s.driver,
   route: s.route,
 });
+
+// Give money back to the wallet, but only if the ride was paid from it.
+const refund = (s: TripDetails, amount: number, why: string) => {
+  if (s.paidWith !== WALLET || amount <= 0) return;
+  useWallet.getState().add({ kind: 'refund', title: 'Refund', detail: why, amount });
+};
 
 export const useTrip = create<TripState>((set, get) => {
   const runProgress = (seconds: number, onDone: () => void) => {
@@ -164,9 +172,21 @@ export const useTrip = create<TripState>((set, get) => {
         bookedAt: Date.now(),
         arriveAt: 0,
       });
+
+      // Paying from the wallet takes the money out as soon as you book.
+      if (details.paidWith === WALLET) {
+        useWallet.getState().add({
+          kind: details.rideType,
+          title: `${details.rideType === 'keke' ? 'Keke' : 'Cab'} ride`,
+          detail: `To ${details.destinationName}`,
+          amount: -details.total,
+        });
+      }
+
       timeout = setTimeout(() => {
         if (Math.random() < NO_DRIVERS_CHANCE) {
           set({ status: 'noDrivers' });
+          refund(get(), get().total, 'No drivers available');
         } else {
           set({ status: 'found', driver: driverFor(details.rideType) });
         }
@@ -182,7 +202,6 @@ export const useTrip = create<TripState>((set, get) => {
           set({ status: 'onTrip', progress: 0, arriveAt: Date.now() + get().tripMin * 60_000 });
           runProgress(TRIP_SECONDS, () => {
             set({ status: 'complete' });
-            // One store updating another: save the finished trip to your history.
             useRides.getState().add(recordOf(get(), 'completed', get().total));
           });
         }, PIN_WAIT_SECONDS * 1000);
@@ -191,8 +210,8 @@ export const useTrip = create<TripState>((set, get) => {
 
     retry: () => get().start(detailsOf(get())),
 
-    // Cancel: save it to history (with any fee charged), then finish up.
     cancel: (fee) => {
+      refund(get(), get().total - fee, 'Cancelled ride');
       useRides.getState().add(recordOf(get(), 'cancelled', fee));
       get().end();
     },
