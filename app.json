@@ -2,6 +2,7 @@
   "expo": {
     "name": "UniRide",
     "slug": "uniride",
+    "owner": "crossbl4des-team",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -9,9 +10,11 @@
     "userInterfaceStyle": "dark",
     "backgroundColor": "#021B1A",
     "ios": {
+      "bundleIdentifier": "com.humaam.uniride",
       "supportsTablet": false
     },
     "android": {
+      "package": "com.humaam.uniride",
       "adaptiveIcon": {
         "backgroundColor": "#021B1A",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -20,7 +23,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "server",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -34,12 +37,16 @@
         }
       ],
       "expo-font",
-      "expo-asset",
-      "expo-image"
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "64b073a3-6244-47d9-ab91-872fce83148d"
+      }
     }
   }
 }
