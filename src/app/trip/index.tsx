@@ -1,7 +1,7 @@
 // src/app/trip/index.tsx — 15 Finding · 17 On the way · 18 Arrived · 19 Trip in progress
 // ONE map screen; the sheet and markers change with the trip's status.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, Easing, Linking, Share } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, Easing, Linking, Share, BackHandler } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,10 +14,19 @@ import { DriverCard } from '../../components/DriverCard';
 import { ProgressBar } from '../../components/ProgressBar';
 import { useTrip } from '../../store/useTrip';
 import { useSafety } from '../../store/useSafety';
+import { useMorph } from '../../store/useMorph';
 import { pointAlong, LatLng } from '../../utils/route';
 import { clockAt, clockIn, naira } from '../../utils/format';
 import { darkMapStyle } from '../../theme/mapStyle';
 import { colors, space, radius, type } from '../../theme';
+
+// Shrink into the banner: the morph card covers the screen, we leave underneath it.
+function minimise() {
+  useMorph.getState().closeTrip(() => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/home');
+  });
+}
 
 function SearchPulse() {
   const pulse = useRef(new Animated.Value(0)).current;
@@ -95,12 +104,6 @@ export default function Trip() {
   const paidCash = trip.paidWith === 'Cash';
   const openCancel = () => router.push('/trip/cancel');
 
-  // Leave the tracking screen; the ride keeps going and the banner takes over.
-  const minimise = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace('/home');
-  };
-
   const sharedWith = shareTrips ? contacts.filter((c) => c.everyTrip).map((c) => c.name.split(' ')[0]) : [];
 
   useFocusEffect(
@@ -109,6 +112,17 @@ export default function Trip() {
       if (status === 'complete') router.replace('/trip/rate');
       if (status === 'noDrivers') router.replace('/trip/no-drivers');
     }, [status])
+  );
+
+  // Android back button minimises too (with the same shrink-into-banner animation).
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        minimise();
+        return true;
+      });
+      return () => sub.remove();
+    }, [])
   );
 
   useEffect(() => {

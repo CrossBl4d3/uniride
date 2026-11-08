@@ -1,15 +1,14 @@
 // src/components/LiveTripBanner.tsx — the Figma "Banner/Live trip" (6 states)
-// Everything shown is derived from the trip store, so it updates live as the ride moves.
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { Icon, IconName } from './Icon';
 import { ProgressBar } from './ProgressBar';
 import { useTrip, TripStatus } from '../store/useTrip';
 import { useSafety } from '../store/useSafety';
+import { useMorph } from '../store/useMorph';
 import { clockAt, naira } from '../utils/format';
 import { colors, space, radius, type } from '../theme';
 
-// Where tapping the banner takes you, for each status.
 export function liveTripHref(status: TripStatus) {
   if (status === 'complete') return '/trip/rate' as const;
   if (status === 'noDrivers') return '/trip/no-drivers' as const;
@@ -27,7 +26,6 @@ export function LiveTripBanner() {
   const minutesLeft = Math.max(1, Math.ceil((1 - progress) * trip.tripMin));
   const kmLeft = ((1 - progress) * trip.km).toFixed(1);
 
-  // Pick what to show. Each status fills in the same few slots.
   let lead: { initials?: string; icon?: IconName; bg: string; color: string } = {
     bg: colors.bg.accentSubtle,
     color: colors.icon.accent,
@@ -80,12 +78,18 @@ export function LiveTripBanner() {
       subtitle = trip.paidWith === 'Cash' ? 'Tap for options' : `${naira(trip.total)} refunded · tap for options`;
       break;
     default:
-      return null; // idle: nothing to show
+      return null;
   }
+
+  const open = () => {
+    const href = liveTripHref(status);
+    if (href === '/trip') useMorph.getState().openTrip(); // grow the banner into full tracking
+    else router.push(href);
+  };
 
   return (
     <Pressable
-      onPress={() => router.push(liveTripHref(status))}
+      onPress={open}
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${subtitle}. Open ride`}
       style={({ pressed }) => [styles.banner, pressed && { opacity: 0.85 }]}

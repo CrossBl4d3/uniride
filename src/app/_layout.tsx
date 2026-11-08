@@ -15,7 +15,9 @@ import {
 import { KonkhmerSleokchher_400Regular } from '@expo-google-fonts/konkhmer-sleokchher';
 import { OfflineScreen } from '../components/OfflineScreen';
 import { LiveTripBanner } from '../components/LiveTripBanner';
+import { TripMorph } from '../components/TripMorph';
 import { useTrip } from '../store/useTrip';
+import { useMorph } from '../store/useMorph';
 import { colors, space } from '../theme';
 
 SplashScreen.preventAutoHideAsync();
@@ -26,8 +28,6 @@ const slideUp = {
   gestureDirection: 'vertical',
 } as const;
 
-// Show the banner whenever a trip exists, except where it would be pointless:
-// on the trip screens themselves, while booking, and during onboarding.
 function useBannerVisible() {
   const status = useTrip((s) => s.status);
   const pathname = usePathname();
@@ -37,11 +37,10 @@ function useBannerVisible() {
   return status !== 'idle' && !hiddenHere;
 }
 
-// The app itself, once fonts are loaded. (Hooks must run on every render,
-// so they live here rather than after RootLayout's early "return null".)
 function AppShell() {
   const insets = useSafeAreaInsets();
   const showBanner = useBannerVisible();
+  const setBannerRect = useMorph((s) => s.setBannerRect);
 
   return (
     <View style={styles.app}>
@@ -49,12 +48,18 @@ function AppShell() {
 
       {showBanner && (
         <View style={[styles.bannerStrip, { paddingTop: insets.top + space.sm }]}>
-          <LiveTripBanner />
+          {/* Report exactly where the banner is drawn, so the morph can start and end there */}
+          <View
+            onLayout={(e) => {
+              const { x, y, width, height } = e.nativeEvent.layout;
+              setBannerRect({ x, y, width, height });
+            }}
+          >
+            <LiveTripBanner />
+          </View>
         </View>
       )}
 
-      {/* The banner already covers the notch. So we tell every screen below it that
-          the top safe-area inset is 0, otherwise they'd add notch space a second time. */}
       <SafeAreaInsetsContext.Provider value={showBanner ? { ...insets, top: 0 } : insets}>
         <Stack
           screenOptions={{
@@ -65,7 +70,14 @@ function AppShell() {
           <Stack.Screen name="campus" options={slideUp} />
           <Stack.Screen name="(tabs)" options={{ animation: 'fade' }} />
 
-          <Stack.Screen name="trip/index" options={{ gestureEnabled: false, animation: 'slide_from_bottom' }} />
+          {/* Opened by the morph card? Then no slide of its own (the card does the animating). */}
+          <Stack.Screen
+            name="trip/index"
+            options={({ route }) => ({
+              gestureEnabled: false,
+              animation: (route.params as { morph?: string } | undefined)?.morph ? 'none' : 'slide_from_bottom',
+            })}
+          />
           <Stack.Screen name="trip/found" options={{ gestureEnabled: false, animation: 'fade' }} />
           <Stack.Screen name="trip/rate" options={{ gestureEnabled: false, animation: 'fade' }} />
           <Stack.Screen name="trip/no-drivers" options={{ gestureEnabled: false, animation: 'fade' }} />
@@ -83,6 +95,8 @@ function AppShell() {
         </Stack>
       </SafeAreaInsetsContext.Provider>
 
+      {/* Above every screen, below the offline overlay */}
+      <TripMorph />
       <OfflineScreen />
     </View>
   );

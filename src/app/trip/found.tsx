@@ -7,6 +7,7 @@ import { Icon } from '../../components/Icon';
 import { Button } from '../../components/Button';
 import { DriverCard } from '../../components/DriverCard';
 import { useTrip } from '../../store/useTrip';
+import { useMorph } from '../../store/useMorph';
 import { naira } from '../../utils/format';
 import { colors, space, radius, type } from '../../theme';
 
@@ -14,10 +15,8 @@ export default function DriverFound() {
   const insets = useSafeAreaInsets();
   const trip = useTrip();
   const driver = trip.driver;
-  const left = useRef(false); // make sure we only navigate away once
+  const left = useRef(false);
 
-  // The driver sets off on their own after a few seconds (or when you tap Track).
-  // Either way the status moves past "found", and we go back to the live map.
   useEffect(() => {
     if (trip.status !== 'found' && !left.current) {
       left.current = true;
@@ -32,11 +31,13 @@ export default function DriverFound() {
       ? `Pay ${naira(trip.total)} in cash when you arrive.`
       : `${naira(trip.total)} was paid from your ${trip.paidWith}.`;
 
-  // Close this AND the tracking screen underneath it: the banner takes over.
+  // Shrink into the banner, closing this AND the tracking screen underneath.
   const minimise = () => {
-    left.current = true;
-    if (router.canDismiss()) router.dismiss(2);
-    else router.replace('/home');
+    useMorph.getState().closeTrip(() => {
+      left.current = true;
+      if (router.canDismiss()) router.dismiss(2);
+      else router.replace('/home');
+    });
   };
 
   return (
@@ -87,7 +88,7 @@ export default function DriverFound() {
           label="Track my ride"
           fullWidth
           icon={<Icon name="navigation" size={18} color={colors.text.onAccent} />}
-          onPress={() => trip.track()} // the effect above handles going back
+          onPress={() => trip.track()}
         />
         <Button
           label="View receipt"
