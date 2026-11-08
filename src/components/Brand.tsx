@@ -6,8 +6,8 @@ import { colors, fonts } from '../theme';
 // The Figma "Brand/Logo mark": a car seen from the front, drawn on a 6 × 4 grid of circles.
 // It is 3:2, so `width` sets the size and the height follows.
 const LOGO_MARK =
-  'M150 0H450A50 50 0 0 1 500 50A50 50 0 0 0 550 100A50 50 0 0 1 600 150V350A50 50 0 0 1 500 350V360' +
-  'A40 40 0 0 0 460 320H140A40 40 0 0 0 100 360V350A50 50 0 0 1 0 350V150A50 50 0 0 1 50 100' +
+  'M150 0H450A50 50 0 0 1 500 50A50 50 0 0 0 550 100A50 50 0 0 1 600 150V350A50 50 0 0 1 500 350' +
+  'A40 40 0 0 0 460 310H140A40 40 0 0 0 100 350A50 50 0 0 1 0 350V150A50 50 0 0 1 50 100' +
   'A50 50 0 0 0 100 50A50 50 0 0 1 150 0Z' +
   'M150 100H450A50 50 0 0 1 450 200H150A50 50 0 0 1 150 100Z' +
   'M70 250A30 30 0 1 0 130 250A30 30 0 1 0 70 250Z' +
