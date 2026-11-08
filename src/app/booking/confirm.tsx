@@ -1,5 +1,5 @@
 // src/app/booking/confirm.tsx — 14 Confirm & pay
-import { useRef, useState } from 'react';
+import { ComponentRef, useRef, useState } from 'react';
 import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +16,7 @@ import { useTrip } from '../../store/useTrip';
 import { useUI } from '../../store/useUI';
 import { useWallet } from '../../store/useWallet';
 import { useDefaultCard, cardLabel } from '../../store/useCards';
-import { useMorph, goToTrip } from '../../store/useMorph';
+import { useMorph } from '../../store/useMorph';
 import { parseKm, fareFor, tripMinutes, priceBreakdown } from '../../utils/fare';
 import { clockIn, naira } from '../../utils/format';
 import { routeTo } from '../../utils/route';
@@ -25,7 +25,7 @@ import { colors, space, radius, type } from '../../theme';
 export default function ConfirmAndPay() {
   const insets = useSafeAreaInsets();
   const [paying, setPaying] = useState(false);
-  const payRef = useRef<View>(null); // so we can ask where the Pay button is on screen
+  const payRef = useRef<ComponentRef<typeof View>>(null); // so we can ask where the Pay button is on screen
 
   const email = useUser((s) => s.email);
   const campusId = useUser((s) => s.campusId);
@@ -81,15 +81,16 @@ export default function ConfirmAndPay() {
 
       // Grow the tracking screen out of the Pay button.
       // measureInWindow tells us exactly where the button is drawn on screen.
-      payRef.current?.measureInWindow((x, y, width, height) => {
+      const button = payRef.current;
+      if (!button) {
+        useMorph.getState().openTrip();
+        return;
+      }
+      button.measureInWindow((x, y, width, height) => {
         useMorph.getState().openTrip({
           from: { x, y, width, height },
           radius: height / 2, // the button is a pill
-          showBanner: false,
-          go: () => {
-            if (router.canDismiss()) router.dismissAll(); // close the booking screens underneath
-            goToTrip();
-          },
+          tint: colors.bg.accent, // start out the same green as the button
         });
       });
     }, 1500);

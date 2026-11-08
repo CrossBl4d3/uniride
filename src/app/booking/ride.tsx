@@ -1,24 +1,24 @@
 // src/app/booking/ride.tsx — 13 Choose a ride
-import { useEffect, useRef, useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
-import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
-import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Icon } from '../../components/Icon';
-import { Chip } from '../../components/Chip';
-import { Button } from '../../components/Button';
-import { MapPin } from '../../components/MapPin';
-import { RiderMarker } from '../../components/MapMarkers';
-import { campuses } from '../../data/campuses';
-import { rideTypes } from '../../data/rides';
-import { useUser } from '../../store/useUser';
-import { useBooking } from '../../store/useBooking';
-import { parseKm, fareFor, tripMinutes } from '../../utils/fare';
-import { clockIn } from '../../utils/format';
-import { mockRoute } from '../../utils/route';
-import { darkMapStyle } from '../../theme/mapStyle';
-import { colors, space, radius, type } from '../../theme';
+import { router } from "expo-router";
+import { useEffect, useRef, useState } from "react";
+import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import MapView, { Marker, Polyline } from "react-native-maps";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
+import { Button } from "../../components/Button";
+import { Chip } from "../../components/Chip";
+import { Icon } from "../../components/Icon";
+import { RiderMarker } from "../../components/MapMarkers";
+import { MapPin } from "../../components/MapPin";
+import { campuses } from "../../data/campuses";
+import { rideTypes } from "../../data/rides";
+import { useBooking } from "../../store/useBooking";
+import { useUser } from "../../store/useUser";
+import { colors, radius, space, type } from "../../theme";
+import { darkMapStyle } from "../../theme/mapStyle";
+import { fareFor, parseKm, tripMinutes } from "../../utils/fare";
+import { clockIn } from "../../utils/format";
+import { mockRoute } from "../../utils/route";
 
 export default function ChooseRide() {
   const insets = useSafeAreaInsets();
@@ -42,11 +42,11 @@ export default function ChooseRide() {
     destination?.latitude != null && destination?.longitude != null
       ? { latitude: destination.latitude, longitude: destination.longitude }
       : undefined;
-  const route = mockRoute(start, km, destination?.id ?? 'none', pinned);
+  const route = mockRoute(start, km, destination?.id ?? "none", pinned);
 
   const end = route[route.length - 1];
   const tripMin = tripMinutes(km);
-  const isStudent = email.toLowerCase().endsWith('.edu.ng');
+  const isStudent = email.toLowerCase().endsWith(".edu.ng");
 
   const selected = rideTypes.find((r) => r.id === rideType) ?? rideTypes[0];
   const selectedPrice = fareFor(selected.id, km);
@@ -54,7 +54,12 @@ export default function ChooseRide() {
   useEffect(() => {
     if (!mapReady || !sheetHeight) return;
     mapRef.current?.fitToCoordinates(route, {
-      edgePadding: { top: insets.top + 140, bottom: sheetHeight + 60, left: 80, right: 80 },
+      edgePadding: {
+        top: insets.top + 140,
+        bottom: sheetHeight + 60,
+        left: 80,
+        right: 80,
+      },
       animated: false,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -71,19 +76,38 @@ export default function ChooseRide() {
         onMapReady={() => setMapReady(true)}
         userInterfaceStyle="dark"
         customMapStyle={darkMapStyle}
-        showsPointsOfInterest={false}
+        showsPointsOfInterests={false}
         showsCompass={false}
         toolbarEnabled={false}
       >
-        <Polyline coordinates={route} strokeColor={colors.bg.canvas} strokeWidth={9} lineCap="round" lineJoin="round" />
-        <Polyline coordinates={route} strokeColor={colors.map.route} strokeWidth={5} lineCap="round" lineJoin="round" />
+        <Polyline
+          coordinates={route}
+          strokeColor={colors.bg.canvas}
+          strokeWidth={9}
+          lineCap="round"
+          lineJoin="round"
+        />
+        <Polyline
+          coordinates={route}
+          strokeColor={colors.map.route}
+          strokeWidth={5}
+          lineCap="round"
+          lineJoin="round"
+        />
 
-        <Marker coordinate={start} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+        <Marker
+          coordinate={start}
+          anchor={{ x: 0.5, y: 0.5 }}
+          tracksViewChanges={false}
+        >
           <RiderMarker />
         </Marker>
 
         <Marker
-          coordinate={{ latitude: start.latitude + 0.0007, longitude: start.longitude - 0.0012 }}
+          coordinate={{
+            latitude: start.latitude + 0.0007,
+            longitude: start.longitude - 0.0012,
+          }}
           anchor={{ x: 1, y: 1 }}
           tracksViewChanges={false}
         >
@@ -93,11 +117,17 @@ export default function ChooseRide() {
           </View>
         </Marker>
 
-        <Marker coordinate={end} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+        <Marker
+          coordinate={end}
+          anchor={{ x: 0.5, y: 1 }}
+          tracksViewChanges={false}
+        >
           <View style={styles.destination}>
             <View style={styles.placeLabel}>
               <View style={styles.placeDot} />
-              <Text style={styles.placeText} numberOfLines={1}>{destination.name}</Text>
+              <Text style={styles.placeText} numberOfLines={1}>
+                {destination.name}
+              </Text>
             </View>
             <MapPin size={34} />
           </View>
@@ -115,13 +145,21 @@ export default function ChooseRide() {
       </Svg>
 
       <View style={[styles.top, { top: insets.top + space.sm }]}>
-        <Pressable style={styles.roundButton} onPress={() => router.back()} accessibilityLabel="Go back">
+        <Pressable
+          style={styles.roundButton}
+          onPress={() => router.back()}
+          accessibilityLabel="Go back"
+        >
           <Icon name="arrow-left" />
         </Pressable>
         <View style={styles.routePill}>
-          <Text style={styles.pillText} numberOfLines={1}>{pickup.area}</Text>
+          <Text style={styles.pillText} numberOfLines={1}>
+            {pickup.area}
+          </Text>
           <Icon name="arrow-right" size={16} color={colors.icon.muted} />
-          <Text style={[styles.pillText, { flexShrink: 1 }]} numberOfLines={1}>{destination.name}</Text>
+          <Text style={[styles.pillText, { flexShrink: 1 }]} numberOfLines={1}>
+            {destination.name}
+          </Text>
         </View>
       </View>
 
@@ -133,7 +171,9 @@ export default function ChooseRide() {
 
         <View style={styles.titleRow}>
           <Text style={styles.title}>Choose a ride</Text>
-          {isStudent && <Chip variant="accent" icon="school" label="Student fare" />}
+          {isStudent && (
+            <Chip variant="accent" icon="school" label="Student fare" />
+          )}
         </View>
 
         {rideTypes.map((r) => {
@@ -146,7 +186,11 @@ export default function ChooseRide() {
               accessibilityState={{ selected: isSelected }}
               style={[styles.card, isSelected && styles.cardSelected]}
             >
-              <Image source={r.image} style={styles.vehicle} resizeMode="contain" />
+              <Image
+                source={r.image}
+                style={styles.vehicle}
+                resizeMode="contain"
+              />
               <View style={styles.details}>
                 <View style={styles.nameRow}>
                   <Text style={styles.name}>{r.name}</Text>
@@ -155,7 +199,12 @@ export default function ChooseRide() {
                     <Text style={styles.meta}>{r.seats}</Text>
                   </View>
                 </View>
-                <Text style={styles.meta} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.85}>
+                <Text
+                  style={styles.meta}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.85}
+                >
                   {r.awayMin} min away · Drop-off {clockIn(r.awayMin + tripMin)}
                 </Text>
               </View>
@@ -167,7 +216,7 @@ export default function ChooseRide() {
         <Button
           label={`Choose ${selected.name} · ₦${selectedPrice}`}
           fullWidth
-          onPress={() => router.push('/booking/confirm')}
+          onPress={() => router.push("/booking/confirm")}
         />
       </View>
     </View>
@@ -176,13 +225,13 @@ export default function ChooseRide() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg.canvas },
-  scrim: { position: 'absolute', top: 0, left: 0, right: 0, height: 180 },
+  scrim: { position: "absolute", top: 0, left: 0, right: 0, height: 180 },
   top: {
-    position: 'absolute',
+    position: "absolute",
     left: space.xl,
     right: space.xl,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: space.md,
   },
   roundButton: {
@@ -190,14 +239,14 @@ const styles = StyleSheet.create({
     height: 48,
     borderRadius: 24,
     backgroundColor: colors.bg.overlay,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   routePill: {
     flex: 1,
     height: 36,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: space.sm,
     paddingHorizontal: space.md,
     borderRadius: radius.pill,
@@ -207,8 +256,8 @@ const styles = StyleSheet.create({
   },
   pillText: { ...type.captionStrong, color: colors.text.primary },
   eta: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 6,
     paddingVertical: space.sm,
     paddingHorizontal: space.md,
@@ -216,10 +265,10 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.accent,
   },
   etaText: { ...type.captionStrong, color: colors.text.onAccent },
-  destination: { alignItems: 'center', gap: space.xs },
+  destination: { alignItems: "center", gap: space.xs },
   placeLabel: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: space.sm,
     maxWidth: 220,
     paddingVertical: space.sm,
@@ -230,10 +279,19 @@ const styles = StyleSheet.create({
     borderColor: colors.border.default,
     backgroundColor: colors.bg.canvas,
   },
-  placeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: colors.bg.accent },
-  placeText: { ...type.captionStrong, color: colors.text.primary, flexShrink: 1 },
+  placeDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: colors.bg.accent,
+  },
+  placeText: {
+    ...type.captionStrong,
+    color: colors.text.primary,
+    flexShrink: 1,
+  },
   sheet: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
@@ -244,18 +302,22 @@ const styles = StyleSheet.create({
     borderTopRightRadius: radius.xl,
   },
   handle: {
-    alignSelf: 'center',
+    alignSelf: "center",
     width: 40,
     height: 5,
     borderRadius: 3,
     marginTop: space.sm,
     backgroundColor: colors.border.strong,
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  titleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
   title: { ...type.h2, color: colors.text.primary },
   card: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 14,
     paddingVertical: 14,
     paddingHorizontal: space.lg,
@@ -271,9 +333,9 @@ const styles = StyleSheet.create({
   },
   vehicle: { width: 84, height: 56 },
   details: { flex: 1, gap: 2 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: space.sm },
   name: { ...type.h3, color: colors.text.primary },
-  seats: { flexDirection: 'row', alignItems: 'center', gap: space.xs },
+  seats: { flexDirection: "row", alignItems: "center", gap: space.xs },
   meta: { ...type.caption, color: colors.text.secondary },
   price: { ...type.price, color: colors.text.primary },
 });

@@ -1,10 +1,12 @@
 // src/app/trip/no-drivers.tsx — 22 No Kekes available
-import { View, Text, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { useCallback, useRef, useState } from 'react';
+import { View, Text, StyleSheet, BackHandler } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TopBar } from '../../components/TopBar';
 import { Button } from '../../components/Button';
 import { Icon } from '../../components/Icon';
+import { MorphScreen, useMorphScreen } from '../../components/MorphScreen';
 import { rideTypes } from '../../data/rides';
 import { useTrip } from '../../store/useTrip';
 import { useUser } from '../../store/useUser';
@@ -13,9 +15,21 @@ import { fareFor, priceBreakdown } from '../../utils/fare';
 import { naira } from '../../utils/format';
 import { colors, space, radius, type } from '../../theme';
 
-export default function NoDrivers() {
+// Grows out of the banner (or fades in over tracking) like the other trip screens.
+export default function NoDriversScreen() {
+  return (
+    <MorphScreen>
+      <NoDrivers />
+    </MorphScreen>
+  );
+}
+
+function NoDrivers() {
   const insets = useSafeAreaInsets();
-  const trip = useTrip();
+  const { fadeOut } = useMorphScreen();
+  // A snapshot, so the text doesn't change while this screen fades away.
+  const [trip] = useState(() => useTrip.getState());
+  const leaving = useRef(false);
   const email = useUser((s) => s.email);
   const setRideType = useBooking((s) => s.setRideType);
 
@@ -29,18 +43,39 @@ export default function NoDrivers() {
       ? 'You haven’t been charged.'
       : `Your ${naira(trip.total)} has been refunded to your ${trip.paidWith}.`;
 
-  const leave = () => {
-    trip.end();
-    if (router.canDismiss()) router.dismissAll();
-  };
+  // Clear the ride first (Home settles behind this screen), then fade away to Home.
+  const leave = useCallback(() => {
+    if (leaving.current) return;
+    leaving.current = true;
+    useTrip.getState().reset();
+    useBooking.getState().reset();
+    fadeOut(() => router.dismissTo('/home'));
+  }, [fadeOut]);
+
+  // Back to the tracking screen (it's usually right underneath), searching again.
   const tryAgain = () => {
-    trip.retry();
-    router.replace('/trip');
+    if (leaving.current) return;
+    leaving.current = true;
+    useTrip.getState().retry();
+    fadeOut(() => router.dismissTo('/trip'));
   };
+
   const bookCab = () => {
+    if (leaving.current) return;
+    leaving.current = true;
     setRideType('cab'); // the destination is still in the booking store
     router.replace('/booking/confirm');
   };
+
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        leave();
+        return true;
+      });
+      return () => sub.remove();
+    }, [leave])
+  );
 
   return (
     <View style={styles.screen}>

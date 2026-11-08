@@ -15,18 +15,11 @@ import { ProgressBar } from '../../components/ProgressBar';
 import { useTrip } from '../../store/useTrip';
 import { useSafety } from '../../store/useSafety';
 import { useMorph } from '../../store/useMorph';
+import { MorphScreen, useMorphScreen } from '../../components/MorphScreen';
 import { pointAlong, LatLng } from '../../utils/route';
 import { clockAt, clockIn, naira } from '../../utils/format';
 import { darkMapStyle } from '../../theme/mapStyle';
 import { colors, space, radius, type } from '../../theme';
-
-// Shrink into the banner: the morph card covers the screen, we leave underneath it.
-function minimise() {
-  useMorph.getState().closeTrip(() => {
-    if (router.canGoBack()) router.back();
-    else router.replace('/home');
-  });
-}
 
 function SearchPulse() {
   const pulse = useRef(new Animated.Value(0)).current;
@@ -86,8 +79,19 @@ function RouteSummary({ pickup, destination, footer, footerRight }: {
   );
 }
 
-export default function Trip() {
+// The screen grows out of the banner and shrinks back into it (see MorphScreen).
+export default function TripScreen() {
+  return (
+    <MorphScreen>
+      <Trip />
+    </MorphScreen>
+  );
+}
+
+function Trip() {
   const insets = useSafeAreaInsets();
+  const morph = useMorphScreen();
+  const minimise = () => morph.close();
   const mapRef = useRef<MapView>(null);
   const [mapReady, setMapReady] = useState(false);
   const [sheetHeight, setSheetHeight] = useState(0);
@@ -106,23 +110,26 @@ export default function Trip() {
 
   const sharedWith = shareTrips ? contacts.filter((c) => c.everyTrip).map((c) => c.name.split(' ')[0]) : [];
 
+  // Move on to the next screen when the trip changes — but only once we've finished growing,
+  // and never while we're shrinking away.
   useFocusEffect(
     useCallback(() => {
+      if (!morph.ready || morph.closing || useMorph.getState().closeRequested) return;
       if (status === 'found') router.push('/trip/found');
-      if (status === 'complete') router.replace('/trip/rate');
-      if (status === 'noDrivers') router.replace('/trip/no-drivers');
-    }, [status])
+      if (status === 'complete') router.push('/trip/rate');
+      if (status === 'noDrivers') router.push('/trip/no-drivers');
+    }, [status, morph.ready, morph.closing])
   );
 
   // Android back button minimises too (with the same shrink-into-banner animation).
   useFocusEffect(
     useCallback(() => {
       const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        minimise();
+        morph.close();
         return true;
       });
       return () => sub.remove();
-    }, [])
+    }, [morph.close])
   );
 
   useEffect(() => {
@@ -181,7 +188,7 @@ export default function Trip() {
         onMapReady={() => setMapReady(true)}
         userInterfaceStyle="dark"
         customMapStyle={darkMapStyle}
-        showsPointsOfInterest={false}
+        showsPointsOfInterests={false}
         showsCompass={false}
         toolbarEnabled={false}
       >

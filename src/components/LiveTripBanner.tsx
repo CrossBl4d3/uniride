@@ -1,6 +1,5 @@
 // src/components/LiveTripBanner.tsx — the Figma "Banner/Live trip" (6 states)
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
 import { Icon, IconName } from './Icon';
 import { ProgressBar } from './ProgressBar';
 import { useTrip, TripStatus } from '../store/useTrip';
@@ -81,11 +80,8 @@ export function LiveTripBanner() {
       return null;
   }
 
-  const open = () => {
-    const href = liveTripHref(status);
-    if (href === '/trip') useMorph.getState().openTrip(); // grow the banner into full tracking
-    else router.push(href);
-  };
+  // Grow the banner into the full-screen tracking (or rating / no-drivers) screen.
+  const open = () => useMorph.getState().openTrip({ href: liveTripHref(status) });
 
   return (
     <Pressable

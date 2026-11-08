@@ -1,7 +1,7 @@
 // src/app/trip/found.tsx — 16 Driver found
-import { useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, Linking } from 'react-native';
-import { router } from 'expo-router';
+import { useCallback, useEffect, useRef } from 'react';
+import { View, Text, Pressable, StyleSheet, Alert, Linking, BackHandler } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../components/Icon';
 import { Button } from '../../components/Button';
@@ -24,21 +24,31 @@ export default function DriverFound() {
     }
   }, [trip.status]);
 
+  // Shrink into the banner: step back to the tracking screen, which then shrinks itself away.
+  const minimise = useCallback(() => {
+    if (left.current) return;
+    left.current = true;
+    useMorph.getState().requestClose();
+    router.back();
+  }, []);
+
+  // Android back button minimises too (otherwise tracking would just open this screen again).
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        minimise();
+        return true;
+      });
+      return () => sub.remove();
+    }, [minimise])
+  );
+
   if (!driver) return null;
 
   const paidLine =
     trip.paidWith === 'Cash'
       ? `Pay ${naira(trip.total)} in cash when you arrive.`
       : `${naira(trip.total)} was paid from your ${trip.paidWith}.`;
-
-  // Shrink into the banner, closing this AND the tracking screen underneath.
-  const minimise = () => {
-    useMorph.getState().closeTrip(() => {
-      left.current = true;
-      if (router.canDismiss()) router.dismiss(2);
-      else router.replace('/home');
-    });
-  };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + space['4xl'], paddingBottom: insets.bottom + space.lg }]}>

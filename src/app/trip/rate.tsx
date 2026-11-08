@@ -1,14 +1,18 @@
 // src/app/trip/rate.tsx — 20 Trip complete: Rate driver
-import { useState } from 'react';
-import { View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet } from 'react-native';
+import { useCallback, useRef, useState } from 'react';
+import {
+  View, Text, Pressable, ScrollView, KeyboardAvoidingView, Platform, StyleSheet, Keyboard, BackHandler,
+} from 'react-native';
 import Svg, { Path } from 'react-native-svg';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TopBar } from '../../components/TopBar';
 import { TextField } from '../../components/TextField';
 import { Button } from '../../components/Button';
 import { Chip } from '../../components/Chip';
+import { MorphScreen, useMorphScreen } from '../../components/MorphScreen';
 import { useTrip } from '../../store/useTrip';
+import { useBooking } from '../../store/useBooking';
 import { naira } from '../../utils/format';
 import { colors, space, radius, type } from '../../theme';
 
@@ -40,13 +44,46 @@ const headings = [
 const goodTags = (vehicle: string) => ['Safe driving', 'Friendly', 'On time', `Clean ${vehicle}`, 'Knew the route'];
 const badTags = ['Unsafe driving', 'Late pickup', 'Rude', 'Dirty vehicle', 'Wrong route'];
 
-export default function RateDriver() {
+// Grows out of the banner (or fades in over tracking) like the other trip screens.
+export default function RateScreen() {
+  return (
+    <MorphScreen>
+      <RateDriver />
+    </MorphScreen>
+  );
+}
+
+function RateDriver() {
   const insets = useSafeAreaInsets();
-  const trip = useTrip();
+  const { fadeOut } = useMorphScreen();
+  // A snapshot of the finished ride. The live trip is cleared when you leave, but this
+  // screen keeps showing the ride while it fades away.
+  const [trip] = useState(() => useTrip.getState());
   const driver = trip.driver;
   const [stars, setStars] = useState(0);
   const [tags, setTags] = useState<string[]>([]);
   const [comment, setComment] = useState('');
+  const finishing = useRef(false);
+
+  // Clear the ride FIRST (Home settles behind this screen, banner gone), then fade away to Home.
+  const finish = useCallback(() => {
+    if (finishing.current) return;
+    finishing.current = true;
+    Keyboard.dismiss();
+    useTrip.getState().reset();
+    useBooking.getState().reset();
+    fadeOut(() => router.dismissTo('/home'));
+  }, [fadeOut]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+        finish();
+        return true;
+      });
+      return () => sub.remove();
+    }, [finish])
+  );
 
   if (!driver) return null;
 
@@ -60,10 +97,6 @@ export default function RateDriver() {
   const toggle = (tag: string) =>
     setTags((prev) => (prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]));
 
-  const finish = () => {
-    trip.end();
-    if (router.canDismiss()) router.dismissAll();
-  };
   const submit = () => {
     // Later: send { stars, tags, comment } to the backend here.
     finish();

@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Button } from '../../components/Button';
 import { Radio } from '../../components/Radio';
 import { useTrip, FREE_CANCEL_SECONDS, CANCEL_FEE } from '../../store/useTrip';
+import { useBooking } from '../../store/useBooking';
 import { naira } from '../../utils/format';
 import { colors, space, radius, type } from '../../theme';
 
@@ -67,8 +68,11 @@ export default function CancelRide() {
   const keep = () => close(() => router.back());
   const cancel = () =>
     close(() => {
-      trip.cancel(free ? 0 : CANCEL_FEE); // saves it to your ride history, then finishes
-      if (router.canDismiss()) router.dismissAll();
+      trip.cancel(free ? 0 : CANCEL_FEE); // refunds and saves it to your ride history
+      // Clear the ride now (not 0.6 s later), so Home appears without a stale banner.
+      useTrip.getState().reset();
+      useBooking.getState().reset();
+      router.dismissTo('/home');
     });
 
   return (

@@ -1,19 +1,19 @@
 // src/app/rides/[id].tsx — 24 Trip details: Receipt
 // The [id] in the file name is filled in by whichever ride you tapped.
-import { useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, Share } from 'react-native';
-import MapView, { Marker, Polyline } from 'react-native-maps';
-import { router, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { TopBar } from '../../components/TopBar';
-import { Button } from '../../components/Button';
-import { Icon } from '../../components/Icon';
-import { MapPin } from '../../components/MapPin';
-import { DriverCard } from '../../components/DriverCard';
-import { useRides } from '../../store/useRides';
-import { clockAt, dayLabel, naira } from '../../utils/format';
-import { darkMapStyle } from '../../theme/mapStyle';
-import { colors, space, radius, type } from '../../theme';
+import { router, useLocalSearchParams } from "expo-router";
+import { useRef } from "react";
+import { ScrollView, Share, StyleSheet, Text, View } from "react-native";
+import MapView, { Marker, Polyline } from "react-native-maps";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Button } from "../../components/Button";
+import { DriverCard } from "../../components/DriverCard";
+import { Icon } from "../../components/Icon";
+import { MapPin } from "../../components/MapPin";
+import { TopBar } from "../../components/TopBar";
+import { useRides } from "../../store/useRides";
+import { colors, radius, space, type } from "../../theme";
+import { darkMapStyle } from "../../theme/mapStyle";
+import { clockAt, dayLabel, naira } from "../../utils/format";
 
 export default function TripDetails() {
   const insets = useSafeAreaInsets();
@@ -30,13 +30,13 @@ export default function TripDetails() {
     );
   }
 
-  const cancelled = ride.status === 'cancelled';
-  const vehicle = ride.rideType === 'keke' ? 'Keke' : 'Cab';
+  const cancelled = ride.status === "cancelled";
+  const vehicle = ride.rideType === "keke" ? "Keke" : "Cab";
   const start = ride.route[0];
   const end = ride.route[ride.route.length - 1];
   const when =
     `${dayLabel(ride.startedAt)} · ${clockAt(ride.startedAt)}` +
-    (cancelled ? '' : ` – ${clockAt(ride.endedAt)}`) +
+    (cancelled ? "" : ` – ${clockAt(ride.endedAt)}`) +
     ` · ${ride.km.toFixed(1)} km`;
   const refunded = ride.total - ride.charged;
 
@@ -46,8 +46,10 @@ export default function TripDetails() {
         `UniRide receipt #${ride.id}`,
         `${ride.pickupName} → ${ride.destinationName}`,
         `${dayLabel(ride.startedAt)}, ${clockAt(ride.startedAt)} · ${vehicle}`,
-        cancelled ? `Cancelled · charged ${naira(ride.charged)}` : `Paid ${naira(ride.total)} with ${ride.paidWith}`,
-      ].join('\n'),
+        cancelled
+          ? `Cancelled · charged ${naira(ride.charged)}`
+          : `Paid ${naira(ride.total)} with ${ride.paidWith}`,
+      ].join("\n"),
     });
 
   return (
@@ -59,7 +61,11 @@ export default function TripDetails() {
           <MapView
             ref={mapRef}
             style={StyleSheet.absoluteFill}
-            initialRegion={{ ...start, latitudeDelta: 0.02, longitudeDelta: 0.02 }}
+            initialRegion={{
+              ...start,
+              latitudeDelta: 0.02,
+              longitudeDelta: 0.02,
+            }}
             onMapReady={() =>
               mapRef.current?.fitToCoordinates(ride.route, {
                 edgePadding: { top: 50, bottom: 30, left: 40, right: 40 },
@@ -72,10 +78,16 @@ export default function TripDetails() {
             pitchEnabled={false}
             userInterfaceStyle="dark"
             customMapStyle={darkMapStyle}
-            showsPointsOfInterest={false}
+            showsPointsOfInterests={false}
             toolbarEnabled={false}
           >
-            <Polyline coordinates={ride.route} strokeColor={colors.bg.canvas} strokeWidth={8} lineCap="round" lineJoin="round" />
+            <Polyline
+              coordinates={ride.route}
+              strokeColor={colors.bg.canvas}
+              strokeWidth={8}
+              lineCap="round"
+              lineJoin="round"
+            />
             <Polyline
               coordinates={ride.route}
               strokeColor={cancelled ? colors.text.tertiary : colors.map.route}
@@ -84,10 +96,18 @@ export default function TripDetails() {
               lineJoin="round"
               lineDashPattern={cancelled ? [6, 6] : undefined}
             />
-            <Marker coordinate={start} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+            <Marker
+              coordinate={start}
+              anchor={{ x: 0.5, y: 0.5 }}
+              tracksViewChanges={false}
+            >
               <View style={styles.startDot} />
             </Marker>
-            <Marker coordinate={end} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+            <Marker
+              coordinate={end}
+              anchor={{ x: 0.5, y: 1 }}
+              tracksViewChanges={false}
+            >
               <MapPin size={28} />
             </Marker>
           </MapView>
@@ -113,7 +133,9 @@ export default function TripDetails() {
           </View>
           <View style={styles.cardFooter}>
             <Text style={styles.label}>{when}</Text>
-            <Text style={cancelled ? styles.error : styles.accent}>{cancelled ? 'Cancelled' : `${ride.minutes} min`}</Text>
+            <Text style={cancelled ? styles.error : styles.accent}>
+              {cancelled ? "Cancelled" : `${ride.minutes} min`}
+            </Text>
           </View>
         </View>
 
@@ -121,7 +143,8 @@ export default function TripDetails() {
           <View style={{ gap: space.sm }}>
             <DriverCard driver={ride.driver} />
             <Text style={styles.note}>
-              Lost something or need to reach {ride.driver.firstName}? Use Get help below.
+              Lost something or need to reach {ride.driver.firstName}? Use Get
+              help below.
             </Text>
           </View>
         )}
@@ -133,10 +156,14 @@ export default function TripDetails() {
                 <Text style={styles.rowLabel}>Cancellation fee</Text>
                 <Text style={styles.value}>{naira(ride.charged)}</Text>
               </View>
-              {ride.paidWith !== 'Cash' && (
+              {ride.paidWith !== "Cash" && (
                 <View style={styles.row}>
-                  <Text style={styles.rowLabel}>Refunded to {ride.paidWith}</Text>
-                  <Text style={[styles.value, { color: colors.text.accent }]}>{naira(refunded)}</Text>
+                  <Text style={styles.rowLabel}>
+                    Refunded to {ride.paidWith}
+                  </Text>
+                  <Text style={[styles.value, { color: colors.text.accent }]}>
+                    {naira(refunded)}
+                  </Text>
                 </View>
               )}
             </>
@@ -153,7 +180,9 @@ export default function TripDetails() {
               {ride.discount > 0 && (
                 <View style={styles.row}>
                   <Text style={styles.rowLabel}>Student discount</Text>
-                  <Text style={[styles.value, { color: colors.text.accent }]}>−{naira(ride.discount)}</Text>
+                  <Text style={[styles.value, { color: colors.text.accent }]}>
+                    −{naira(ride.discount)}
+                  </Text>
                 </View>
               )}
               <View style={[styles.row, styles.totalRow]}>
@@ -169,13 +198,23 @@ export default function TripDetails() {
         </View>
       </ScrollView>
 
-      <View style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}>
-        <Button label="Share receipt" variant="secondary" icon={<Icon name="share" size={18} />} onPress={shareReceipt} style={styles.half} />
+      <View
+        style={[styles.bottom, { paddingBottom: insets.bottom + space.md }]}
+      >
+        <Button
+          label="Share receipt"
+          variant="secondary"
+          icon={<Icon name="share" size={18} />}
+          onPress={shareReceipt}
+          style={styles.half}
+        />
         <Button
           label="Get help"
           variant="secondary"
           icon={<Icon name="help" size={18} />}
-          onPress={() => router.push({ pathname: '/help', params: { rideId: ride.id } })}
+          onPress={() =>
+            router.push({ pathname: "/help", params: { rideId: ride.id } })
+          }
           style={styles.half}
         />
       </View>
@@ -185,9 +224,24 @@ export default function TripDetails() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg.screen },
-  content: { paddingHorizontal: space.xl, paddingTop: space.sm, paddingBottom: space['2xl'], gap: space.md },
-  missing: { ...type.body, color: colors.text.secondary, textAlign: 'center', marginTop: space['3xl'] },
-  mapCard: { height: 200, borderRadius: radius.xl, overflow: 'hidden', backgroundColor: colors.bg.surface },
+  content: {
+    paddingHorizontal: space.xl,
+    paddingTop: space.sm,
+    paddingBottom: space["2xl"],
+    gap: space.md,
+  },
+  missing: {
+    ...type.body,
+    color: colors.text.secondary,
+    textAlign: "center",
+    marginTop: space["3xl"],
+  },
+  mapCard: {
+    height: 200,
+    borderRadius: radius.xl,
+    overflow: "hidden",
+    backgroundColor: colors.bg.surface,
+  },
   startDot: {
     width: 14,
     height: 14,
@@ -203,14 +257,29 @@ const styles = StyleSheet.create({
     borderColor: colors.border.hairline,
     backgroundColor: colors.bg.surface,
   },
-  routeRow: { flexDirection: 'row', gap: space.lg },
-  routeLine: { alignItems: 'center', paddingVertical: 22 },
-  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.bg.accent },
-  line: { width: 2, flex: 1, marginVertical: space.xs, backgroundColor: colors.border.default },
-  square: { width: 10, height: 10, borderRadius: 2, backgroundColor: colors.text.primary },
+  routeRow: { flexDirection: "row", gap: space.lg },
+  routeLine: { alignItems: "center", paddingVertical: 22 },
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: colors.bg.accent,
+  },
+  line: {
+    width: 2,
+    flex: 1,
+    marginVertical: space.xs,
+    backgroundColor: colors.border.default,
+  },
+  square: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: colors.text.primary,
+  },
   cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: space.md,
     marginTop: space.md,
     paddingTop: space.md,
@@ -221,10 +290,28 @@ const styles = StyleSheet.create({
   value: { ...type.bodyStrong, color: colors.text.primary },
   accent: { ...type.captionStrong, color: colors.text.accent },
   error: { ...type.captionStrong, color: colors.status.error },
-  note: { ...type.caption, color: colors.text.tertiary, paddingHorizontal: space.xs },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  note: {
+    ...type.caption,
+    color: colors.text.tertiary,
+    paddingHorizontal: space.xs,
+  },
+  row: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   rowLabel: { ...type.body, color: colors.text.secondary },
-  totalRow: { marginTop: space.xs, paddingTop: space.sm, borderTopWidth: 1, borderTopColor: colors.border.hairline },
-  bottom: { flexDirection: 'row', gap: space.md, paddingHorizontal: space.xl, paddingTop: space.md },
+  totalRow: {
+    marginTop: space.xs,
+    paddingTop: space.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.hairline,
+  },
+  bottom: {
+    flexDirection: "row",
+    gap: space.md,
+    paddingHorizontal: space.xl,
+    paddingTop: space.md,
+  },
   half: { flex: 1 },
 });

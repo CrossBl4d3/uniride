@@ -9,6 +9,7 @@ import { Icon } from '../components/Icon';
 import { usePlaces, SavedPlace } from '../store/usePlaces';
 import { useBooking } from '../store/useBooking';
 import { useTrip, isLive } from '../store/useTrip';
+import { useMorph } from '../store/useMorph';
 import { colors, space, radius, type } from '../theme';
 
 export default function SavedPlaces() {
@@ -22,7 +23,7 @@ export default function SavedPlaces() {
     if (isLive(tripStatus)) {
       Alert.alert('You’re already on a ride', 'Finish or cancel your current ride before booking another.', [
         { text: 'Not now', style: 'cancel' },
-        { text: 'Open my ride', onPress: () => router.push('/trip') },
+        { text: 'Open my ride', onPress: () => useMorph.getState().openTrip() },
       ]);
       return;
     }

@@ -20,6 +20,7 @@ import { useBooking } from '../../store/useBooking';
 import { useUI } from '../../store/useUI';
 import { usePlaces } from '../../store/usePlaces';
 import { useTrip, isLive } from '../../store/useTrip';
+import { useMorph } from '../../store/useMorph';
 import { darkMapStyle } from '../../theme/mapStyle';
 import { colors, space, radius, type } from '../../theme';
 
@@ -83,7 +84,7 @@ export default function Home() {
     if (isLive(tripStatus)) {
       Alert.alert('You’re already on a ride', 'Finish or cancel your current ride before booking another.', [
         { text: 'Not now', style: 'cancel' },
-        { text: 'Open my ride', onPress: () => router.push('/trip') },
+        { text: 'Open my ride', onPress: () => useMorph.getState().openTrip() },
       ]);
       return;
     }
@@ -118,7 +119,7 @@ export default function Home() {
         onMapReady={() => mapRef.current?.animateToRegion(region, 0)}
         userInterfaceStyle="dark"
         customMapStyle={darkMapStyle}
-        showsPointsOfInterest={false}
+        showsPointsOfInterests={false}
         showsCompass={false}
         toolbarEnabled={false}
       >
