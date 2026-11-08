@@ -25,8 +25,9 @@ export function LiveTripBanner() {
   const minutesLeft = Math.max(1, Math.ceil((1 - progress) * trip.tripMin));
   const kmLeft = ((1 - progress) * trip.km).toFixed(1);
 
+  // A dark circle, so the green initials/icon stay readable on the green banner.
   let lead: { initials?: string; icon?: IconName; bg: string; color: string } = {
-    bg: colors.bg.accentSubtle,
+    bg: colors.bg.canvas,
     color: colors.icon.accent,
   };
   let title = '';

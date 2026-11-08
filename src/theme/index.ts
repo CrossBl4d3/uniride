@@ -12,11 +12,11 @@ const palette = {
   basil: '#0B453A',
   forest: '#095544',
   frog: '#17876D',
-  stone: '#707D7D',
-  pistachio: '#AACBC4',
+  stone: '#9FA9A9',       // lightened for contrast: 4.5:1 even on surfaceRaised
+  pistachio: '#B3D1CB',   // lightened for contrast: 4.5:1 even on the brand-green banner
   white: '#FFFFFF',
   amber: '#F5B83D',
-  coral: '#FF6B5E',
+  coral: '#FF8278',       // lightened for contrast: 4.5:1 on surfaceRaised and on errorSubtle
   sky: '#5AB8FF',
 };
 
@@ -32,7 +32,7 @@ export const colors = {
     accent: palette.mountainMeadow,
     accentSubtle: 'rgba(44, 194, 149, 0.14)',
     overlay: 'rgba(2, 27, 26, 0.72)',
-    errorSubtle: 'rgba(255, 107, 94, 0.14)',
+    errorSubtle: 'rgba(255, 130, 120, 0.14)',
     warningSubtle: 'rgba(245, 184, 61, 0.14)',
   },
   text: {

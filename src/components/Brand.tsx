@@ -3,7 +3,26 @@ import { View, Text } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { colors, fonts } from '../theme';
 
-// The green rounded-square "U" from the splash screen.
+// The Figma "Brand/Logo mark": a car seen from the front, drawn on a 6 × 4 grid of circles.
+// It is 3:2, so `width` sets the size and the height follows.
+const LOGO_MARK =
+  'M150 0H450A50 50 0 0 1 500 50A50 50 0 0 0 550 100A50 50 0 0 1 600 150V350A50 50 0 0 1 500 350V360' +
+  'A40 40 0 0 0 460 320H140A40 40 0 0 0 100 360V350A50 50 0 0 1 0 350V150A50 50 0 0 1 50 100' +
+  'A50 50 0 0 0 100 50A50 50 0 0 1 150 0Z' +
+  'M150 100H450A50 50 0 0 1 450 200H150A50 50 0 0 1 150 100Z' +
+  'M70 250A30 30 0 1 0 130 250A30 30 0 1 0 70 250Z' +
+  'M470 250A30 30 0 1 0 530 250A30 30 0 1 0 470 250Z' +
+  'M248 232H352A18 18 0 0 1 352 268H248A18 18 0 0 1 248 232Z';
+
+export function LogoMark({ width = 132, color = colors.text.accent }: { width?: number; color?: string }) {
+  return (
+    <Svg width={width} height={(width * 2) / 3} viewBox="0 0 600 400">
+      <Path d={LOGO_MARK} fill={color} fillRule="evenodd" />
+    </Svg>
+  );
+}
+
+// The Figma "Brand/App icon": the logo mark on a rich-black rounded square.
 export function AppIcon({ size = 96 }: { size?: number }) {
   return (
     <View
@@ -11,14 +30,12 @@ export function AppIcon({ size = 96 }: { size?: number }) {
         width: size,
         height: size,
         borderRadius: size * 0.25,
-        backgroundColor: colors.bg.brand,
+        backgroundColor: colors.bg.canvas,
         alignItems: 'center',
         justifyContent: 'center',
       }}
     >
-      <Text style={{ fontFamily: fonts.wordmark, fontSize: size * 0.625, lineHeight: size * 0.95, color: colors.text.accent }}>
-        U
-      </Text>
+      <LogoMark width={size * 0.62} />
     </View>
   );
 }

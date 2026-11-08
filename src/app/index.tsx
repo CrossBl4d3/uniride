@@ -1,17 +1,14 @@
 // src/app/index.tsx — 01 Splash
 import { useEffect } from 'react';
-import { View, Text, StyleSheet, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
-import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
-import { AppIcon, Wordmark } from '../components/Brand';
+import { LogoMark, Wordmark } from '../components/Brand';
 import { useUser } from '../store/useUser';
 import { useTrip } from '../store/useTrip';
 import { waitForSavedData } from '../store/session';
 import { colors, space, type } from '../theme';
 
 export default function Splash() {
-  const { width } = useWindowDimensions();
-
   useEffect(() => {
     let cancelled = false;
     const minimumShow = new Promise((resolve) => setTimeout(resolve, 1500));
@@ -29,20 +26,8 @@ export default function Splash() {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.glowLayer} pointerEvents="none">
-        <Svg width={width} height={width}>
-          <Defs>
-            <RadialGradient id="glow" cx="50%" cy="50%" r="50%">
-              <Stop offset="0" stopColor={colors.bg.brand} stopOpacity={0.9} />
-              <Stop offset="1" stopColor={colors.bg.brand} stopOpacity={0} />
-            </RadialGradient>
-          </Defs>
-          <Circle cx={width / 2} cy={width / 2} r={width / 2} fill="url(#glow)" />
-        </Svg>
-      </View>
-
       <View style={styles.lockup}>
-        <AppIcon />
+        <LogoMark width={132} />
         <Wordmark />
         <Text style={styles.tagline}>Campus rides, sorted.</Text>
       </View>
@@ -57,15 +42,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  glowLayer: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lockup: { alignItems: 'center', gap: space.sm },
-  tagline: { ...type.body, color: colors.text.secondary },
+  lockup: { alignItems: 'center', gap: space.lg },
+  tagline: { ...type.body, color: colors.text.secondary, marginTop: -space.sm },
 });
