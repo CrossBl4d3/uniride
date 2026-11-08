@@ -55,7 +55,7 @@ const morphScreen = {
 
 // On iPhone, a normal screen pushed on top of a transparent trip screen would end up
 // BEHIND it (or as a half-height sheet). So anything opened from a trip screen (chat,
-// safety, SOS, "Driver found") is shown full screen on top instead.
+// safety, SOS) is shown full screen on top instead.
 type ScreenArgs = { route: { key: string }; navigation: { getState: () => { routes: { key: string; name: string }[] } | undefined } };
 function aboveTripScreen({ route, navigation }: ScreenArgs) {
   const routes = navigation.getState()?.routes ?? [];
@@ -112,7 +112,6 @@ function AppShell() {
               <Stack.Screen name="trip/index" options={morphScreen} />
               <Stack.Screen name="trip/rate" options={morphScreen} />
               <Stack.Screen name="trip/no-drivers" options={morphScreen} />
-              <Stack.Screen name="trip/found" options={{ gestureEnabled: false, animation: 'fade' }} />
               <Stack.Screen
                 name="trip/cancel"
                 options={{

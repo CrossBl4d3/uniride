@@ -11,6 +11,7 @@ import { Button } from '../../components/Button';
 import { MapPin } from '../../components/MapPin';
 import { RiderMarker, VehicleMarker } from '../../components/MapMarkers';
 import { DriverCard } from '../../components/DriverCard';
+import { DriverFoundPanel } from '../../components/DriverFoundPanel';
 import { ProgressBar } from '../../components/ProgressBar';
 import { useTrip } from '../../store/useTrip';
 import { useSafety } from '../../store/useSafety';
@@ -98,6 +99,28 @@ function Trip() {
 
   const trip = useTrip();
   const { status, route, approach, driver, progress } = trip;
+
+  // The map fades in once it's ready, instead of flashing a blank grey grid.
+  const mapFade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!mapReady) return;
+    Animated.timing(mapFade, { toValue: 1, duration: 300, delay: 150, useNativeDriver: true }).start();
+  }, [mapReady, mapFade]);
+
+  // "Driver found" sits on top of this screen while the status is 'found', and fades away
+  // when the driver sets off. Opened from the banner during 'found', it's already showing.
+  const showFound = status === 'found';
+  const [foundMounted, setFoundMounted] = useState(showFound);
+  const foundFade = useRef(new Animated.Value(showFound ? 1 : 0)).current;
+  useEffect(() => {
+    if (showFound) setFoundMounted(true);
+    Animated.timing(foundFade, { toValue: showFound ? 1 : 0, duration: 250, useNativeDriver: true }).start(
+      ({ finished }) => {
+        if (finished && !showFound) setFoundMounted(false);
+      }
+    );
+  }, [showFound, foundFade]);
+
   const shareTrips = useSafety((s) => s.shareTrips);
   const tripPin = useSafety((s) => s.tripPin);
   const contacts = useSafety((s) => s.contacts);
@@ -115,7 +138,6 @@ function Trip() {
   useFocusEffect(
     useCallback(() => {
       if (!morph.ready || morph.closing || useMorph.getState().closeRequested) return;
-      if (status === 'found') router.push('/trip/found');
       if (status === 'complete') router.push('/trip/rate');
       if (status === 'noDrivers') router.push('/trip/no-drivers');
     }, [status, morph.ready, morph.closing])
@@ -181,50 +203,52 @@ function Trip() {
 
   return (
     <View style={styles.screen}>
-      <MapView
-        ref={mapRef}
-        style={StyleSheet.absoluteFill}
-        initialRegion={{ ...pickup, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
-        onMapReady={() => setMapReady(true)}
-        userInterfaceStyle="dark"
-        customMapStyle={darkMapStyle}
-        showsPointsOfInterests={false}
-        showsCompass={false}
-        toolbarEnabled={false}
-      >
-        {status === 'arriving' && (
-          <>
-            <Polyline coordinates={approach} strokeColor={colors.bg.canvas} strokeWidth={9} lineCap="round" lineJoin="round" />
-            <Polyline coordinates={approach} strokeColor={colors.map.route} strokeWidth={5} lineCap="round" lineJoin="round" />
-          </>
-        )}
-        {status === 'onTrip' && (
-          <>
-            <Polyline coordinates={route} strokeColor={colors.bg.canvas} strokeWidth={9} lineCap="round" lineJoin="round" />
-            <Polyline coordinates={route} strokeColor={colors.map.route} strokeWidth={5} lineCap="round" lineJoin="round" />
-            <Marker coordinate={destination} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
-              <MapPin size={34} />
+      <Animated.View style={[StyleSheet.absoluteFill, { opacity: mapFade }]}>
+        <MapView
+          ref={mapRef}
+          style={StyleSheet.absoluteFill}
+          initialRegion={{ ...pickup, latitudeDelta: 0.01, longitudeDelta: 0.01 }}
+          onMapReady={() => setMapReady(true)}
+          userInterfaceStyle="dark"
+          customMapStyle={darkMapStyle}
+          showsPointsOfInterests={false}
+          showsCompass={false}
+          toolbarEnabled={false}
+        >
+          {status === 'arriving' && (
+            <>
+              <Polyline coordinates={approach} strokeColor={colors.bg.canvas} strokeWidth={9} lineCap="round" lineJoin="round" />
+              <Polyline coordinates={approach} strokeColor={colors.map.route} strokeWidth={5} lineCap="round" lineJoin="round" />
+            </>
+          )}
+          {status === 'onTrip' && (
+            <>
+              <Polyline coordinates={route} strokeColor={colors.bg.canvas} strokeWidth={9} lineCap="round" lineJoin="round" />
+              <Polyline coordinates={route} strokeColor={colors.map.route} strokeWidth={5} lineCap="round" lineJoin="round" />
+              <Marker coordinate={destination} anchor={{ x: 0.5, y: 1 }} tracksViewChanges={false}>
+                <MapPin size={34} />
+              </Marker>
+            </>
+          )}
+
+          {(status === 'searching' || status === 'found') && (
+            <Marker coordinate={pickup} anchor={{ x: 0.5, y: 0.5 }}>
+              <SearchPulse />
             </Marker>
-          </>
-        )}
+          )}
+          {(status === 'arriving' || status === 'arrived') && (
+            <Marker coordinate={pickup} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+              <RiderMarker />
+            </Marker>
+          )}
 
-        {(status === 'searching' || status === 'found') && (
-          <Marker coordinate={pickup} anchor={{ x: 0.5, y: 0.5 }}>
-            <SearchPulse />
-          </Marker>
-        )}
-        {(status === 'arriving' || status === 'arrived') && (
-          <Marker coordinate={pickup} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-            <RiderMarker />
-          </Marker>
-        )}
-
-        {vehicle && (
-          <Marker coordinate={vehicle} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
-            <VehicleMarker />
-          </Marker>
-        )}
-      </MapView>
+          {vehicle && (
+            <Marker coordinate={vehicle} anchor={{ x: 0.5, y: 0.5 }} tracksViewChanges={false}>
+              <VehicleMarker />
+            </Marker>
+          )}
+        </MapView>
+      </Animated.View>
 
       <View style={[styles.top, { top: insets.top + space.sm }]}>
         <Pressable style={styles.minimise} onPress={minimise} accessibilityLabel="Minimise tracking" hitSlop={8}>
@@ -335,6 +359,15 @@ function Trip() {
           </>
         )}
       </View>
+
+      {foundMounted && (
+        <Animated.View
+          style={[StyleSheet.absoluteFill, { opacity: foundFade }]}
+          pointerEvents={showFound ? 'auto' : 'none'}
+        >
+          <DriverFoundPanel onMinimise={minimise} />
+        </Animated.View>
+      )}
     </View>
   );
 }

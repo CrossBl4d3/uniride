@@ -1,47 +1,20 @@
-// src/app/trip/found.tsx — 16 Driver found
-import { useCallback, useEffect, useRef } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, Linking, BackHandler } from 'react-native';
-import { router, useFocusEffect } from 'expo-router';
+// src/components/DriverFoundPanel.tsx — 16 Driver found
+// Shown ON TOP of the tracking screen (not as a separate screen), so the banner can grow
+// straight into it and minimising shrinks it straight back into the banner.
+import { View, Text, Pressable, StyleSheet, Alert, Linking } from 'react-native';
+import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Icon } from '../../components/Icon';
-import { Button } from '../../components/Button';
-import { DriverCard } from '../../components/DriverCard';
-import { useTrip } from '../../store/useTrip';
-import { useMorph } from '../../store/useMorph';
-import { naira } from '../../utils/format';
-import { colors, space, radius, type } from '../../theme';
+import { Icon } from './Icon';
+import { Button } from './Button';
+import { DriverCard } from './DriverCard';
+import { useTrip } from '../store/useTrip';
+import { naira } from '../utils/format';
+import { colors, space, radius, type } from '../theme';
 
-export default function DriverFound() {
+export function DriverFoundPanel({ onMinimise }: { onMinimise: () => void }) {
   const insets = useSafeAreaInsets();
   const trip = useTrip();
   const driver = trip.driver;
-  const left = useRef(false);
-
-  useEffect(() => {
-    if (trip.status !== 'found' && !left.current) {
-      left.current = true;
-      router.back();
-    }
-  }, [trip.status]);
-
-  // Shrink into the banner: step back to the tracking screen, which then shrinks itself away.
-  const minimise = useCallback(() => {
-    if (left.current) return;
-    left.current = true;
-    useMorph.getState().requestClose();
-    router.back();
-  }, []);
-
-  // Android back button minimises too (otherwise tracking would just open this screen again).
-  useFocusEffect(
-    useCallback(() => {
-      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        minimise();
-        return true;
-      });
-      return () => sub.remove();
-    }, [minimise])
-  );
 
   if (!driver) return null;
 
@@ -54,7 +27,7 @@ export default function DriverFound() {
     <View style={[styles.screen, { paddingTop: insets.top + space['4xl'], paddingBottom: insets.bottom + space.lg }]}>
       <Pressable
         style={[styles.minimise, { top: insets.top + space.sm }]}
-        onPress={minimise}
+        onPress={onMinimise}
         accessibilityLabel="Minimise"
         hitSlop={8}
       >
