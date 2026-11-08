@@ -1,7 +1,7 @@
 // src/app/(tabs)/home.tsx — 09 Home (the sheet grows into 10 Plan route)
 import { useEffect, useRef, useState } from 'react';
 import {
-  View, Text, Pressable, ScrollView, StyleSheet, Animated, Easing, BackHandler, Keyboard, useWindowDimensions,
+  View, Text, Pressable, ScrollView, StyleSheet, Alert, Animated, Easing, BackHandler, Keyboard, useWindowDimensions,
 } from 'react-native';
 import MapView, { Marker, Region } from 'react-native-maps';
 import Svg, { Defs, LinearGradient, Stop, Rect } from 'react-native-svg';
@@ -19,6 +19,7 @@ import { useUser } from '../../store/useUser';
 import { useBooking } from '../../store/useBooking';
 import { useUI } from '../../store/useUI';
 import { usePlaces } from '../../store/usePlaces';
+import { useTrip, isLive } from '../../store/useTrip';
 import { darkMapStyle } from '../../theme/mapStyle';
 import { colors, space, radius, type } from '../../theme';
 
@@ -33,7 +34,7 @@ function greeting() {
 
 export default function Home() {
   const insets = useSafeAreaInsets();
-  const { height: screenHeight } = useWindowDimensions();
+  const { height: windowHeight } = useWindowDimensions();
   const tabBarHeight = useTabBarHeight();
 
   const firstName = useUser((s) => s.firstName);
@@ -42,8 +43,11 @@ export default function Home() {
   const expanded = useUI((s) => s.sheetExpanded);
   const setExpanded = useUI((s) => s.setSheetExpanded);
   const saved = usePlaces((s) => s.saved);
+  const tripStatus = useTrip((s) => s.status);
 
   const mapRef = useRef<MapView>(null);
+  // The space Home ACTUALLY has: the whole window, minus the banner when one is showing.
+  const [areaHeight, setAreaHeight] = useState(windowHeight);
   const [collapsedHeight, setCollapsedHeight] = useState(420);
   const [showPanel, setShowPanel] = useState(false);
   const [prefill, setPrefill] = useState('');
@@ -75,6 +79,14 @@ export default function Home() {
   useEffect(() => () => setExpanded(false), [setExpanded]);
 
   const openPlanner = (place?: Place) => {
+    // One ride at a time.
+    if (isLive(tripStatus)) {
+      Alert.alert('You’re already on a ride', 'Finish or cancel your current ride before booking another.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Open my ride', onPress: () => router.push('/trip') },
+      ]);
+      return;
+    }
     if (place) setDestination(place);
     setPrefill(place?.name ?? '');
     setExpanded(true);
@@ -91,13 +103,13 @@ export default function Home() {
 
   const sheetY = progress.interpolate({
     inputRange: [0, 1],
-    outputRange: [screenHeight - collapsedHeight, 0],
+    outputRange: [areaHeight - collapsedHeight, 0],
   });
   const homeContentOpacity = progress.interpolate({ inputRange: [0, 0.4], outputRange: [1, 0], extrapolate: 'clamp' });
   const panelOpacity = progress.interpolate({ inputRange: [0.5, 1], outputRange: [0, 1], extrapolate: 'clamp' });
 
   return (
-    <View style={styles.screen}>
+    <View style={styles.screen} onLayout={(e) => setAreaHeight(e.nativeEvent.layout.height)}>
       <MapView
         ref={mapRef}
         key={campus.id}
@@ -148,7 +160,7 @@ export default function Home() {
 
       <Animated.View pointerEvents="none" style={[styles.backdrop, { opacity: progress }]} />
 
-      <Animated.View style={[styles.sheet, { height: screenHeight, transform: [{ translateY: sheetY }] }]}>
+      <Animated.View style={[styles.sheet, { height: areaHeight, transform: [{ translateY: sheetY }] }]}>
         <Animated.View
           onLayout={(e) => setCollapsedHeight(e.nativeEvent.layout.height)}
           pointerEvents={expanded ? 'none' : 'auto'}
@@ -163,7 +175,6 @@ export default function Home() {
             <Icon name="clock" color={colors.icon.muted} />
           </Pressable>
 
-          {/* Scrolls sideways if you save lots of places */}
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -269,7 +280,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.bg.surfaceRaised,
   },
   placeholder: { ...type.bodyLarge, flex: 1, color: colors.text.tertiary },
-  // Negative margin lets the chips scroll edge-to-edge; padding keeps the first one lined up.
   chipScroll: { flexGrow: 0, marginHorizontal: -space.xl },
   chips: { flexDirection: 'row', gap: space.sm, paddingHorizontal: space.xl },
 });

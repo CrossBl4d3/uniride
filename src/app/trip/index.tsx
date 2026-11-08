@@ -1,7 +1,7 @@
 // src/app/trip/index.tsx — 15 Finding · 17 On the way · 18 Arrived · 19 Trip in progress
 // ONE map screen; the sheet and markers change with the trip's status.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Animated, Easing, Linking, Share, BackHandler } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Animated, Easing, Linking, Share } from 'react-native';
 import MapView, { Marker, Polyline } from 'react-native-maps';
 import { router, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -93,10 +93,14 @@ export default function Trip() {
   const destination = route[route.length - 1];
   const rideName = trip.rideType === 'keke' ? 'Keke' : 'Cab';
   const paidCash = trip.paidWith === 'Cash';
-  const canCancel = status === 'searching' || status === 'found' || status === 'arriving' || status === 'arrived';
   const openCancel = () => router.push('/trip/cancel');
 
-  // Who automatically gets a live link (the "Share trips automatically" switch).
+  // Leave the tracking screen; the ride keeps going and the banner takes over.
+  const minimise = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace('/home');
+  };
+
   const sharedWith = shareTrips ? contacts.filter((c) => c.everyTrip).map((c) => c.name.split(' ')[0]) : [];
 
   useFocusEffect(
@@ -105,16 +109,6 @@ export default function Trip() {
       if (status === 'complete') router.replace('/trip/rate');
       if (status === 'noDrivers') router.replace('/trip/no-drivers');
     }, [status])
-  );
-
-  useFocusEffect(
-    useCallback(() => {
-      const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-        if (canCancel) router.push('/trip/cancel');
-        return true;
-      });
-      return () => sub.remove();
-    }, [canCancel])
   );
 
   useEffect(() => {
@@ -212,6 +206,9 @@ export default function Trip() {
       </MapView>
 
       <View style={[styles.top, { top: insets.top + space.sm }]}>
+        <Pressable style={styles.minimise} onPress={minimise} accessibilityLabel="Minimise tracking" hitSlop={8}>
+          <Icon name="chevron-down" />
+        </Pressable>
         {topText && (
           <View style={styles.pill}>
             <Icon name={status === 'onTrip' ? 'navigation' : 'check'} size={14} color={colors.text.accent} />
@@ -329,8 +326,18 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: space.xl,
     right: space.xl,
-    height: 40,
+    height: 44,
     flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  minimise: {
+    position: 'absolute',
+    left: 0,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.bg.overlay,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -15,7 +15,7 @@ type SavedStore = {
     onFinishHydration: (fn: () => void) => () => void;
   };
 };
-const savedStores: SavedStore[] = [useUser, useRides, useWallet, useSafety, usePlaces, useCards];
+const savedStores: SavedStore[] = [useUser, useRides, useWallet, useSafety, usePlaces, useCards, useTrip];
 
 export function waitForSavedData() {
   return Promise.all(

@@ -1,5 +1,6 @@
 // src/app/trip/found.tsx — 16 Driver found
-import { View, Text, StyleSheet, Alert, Linking } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { View, Text, Pressable, StyleSheet, Alert, Linking } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Icon } from '../../components/Icon';
@@ -13,6 +14,17 @@ export default function DriverFound() {
   const insets = useSafeAreaInsets();
   const trip = useTrip();
   const driver = trip.driver;
+  const left = useRef(false); // make sure we only navigate away once
+
+  // The driver sets off on their own after a few seconds (or when you tap Track).
+  // Either way the status moves past "found", and we go back to the live map.
+  useEffect(() => {
+    if (trip.status !== 'found' && !left.current) {
+      left.current = true;
+      router.back();
+    }
+  }, [trip.status]);
+
   if (!driver) return null;
 
   const paidLine =
@@ -20,13 +32,24 @@ export default function DriverFound() {
       ? `Pay ${naira(trip.total)} in cash when you arrive.`
       : `${naira(trip.total)} was paid from your ${trip.paidWith}.`;
 
-  const trackRide = () => {
-    trip.track();
-    router.back();
+  // Close this AND the tracking screen underneath it: the banner takes over.
+  const minimise = () => {
+    left.current = true;
+    if (router.canDismiss()) router.dismiss(2);
+    else router.replace('/home');
   };
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top + space['4xl'], paddingBottom: insets.bottom + space.lg }]}>
+      <Pressable
+        style={[styles.minimise, { top: insets.top + space.sm }]}
+        onPress={minimise}
+        accessibilityLabel="Minimise"
+        hitSlop={8}
+      >
+        <Icon name="chevron-down" />
+      </Pressable>
+
       <View style={styles.content}>
         <View style={styles.tick}>
           <Icon name="check" size={40} color={colors.text.onAccent} strokeWidth={2.4} />
@@ -64,7 +87,7 @@ export default function DriverFound() {
           label="Track my ride"
           fullWidth
           icon={<Icon name="navigation" size={18} color={colors.text.onAccent} />}
-          onPress={trackRide}
+          onPress={() => trip.track()} // the effect above handles going back
         />
         <Button
           label="View receipt"
@@ -79,6 +102,17 @@ export default function DriverFound() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg.screen, paddingHorizontal: space.xl },
+  minimise: {
+    position: 'absolute',
+    left: space.xl,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.bg.surfaceRaised,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 1,
+  },
   content: { alignItems: 'center', gap: space.md },
   tick: {
     width: 88,

@@ -8,6 +8,7 @@ import { Button } from '../components/Button';
 import { Icon } from '../components/Icon';
 import { usePlaces, SavedPlace } from '../store/usePlaces';
 import { useBooking } from '../store/useBooking';
+import { useTrip, isLive } from '../store/useTrip';
 import { colors, space, radius, type } from '../theme';
 
 export default function SavedPlaces() {
@@ -15,16 +16,23 @@ export default function SavedPlaces() {
   const saved = usePlaces((s) => s.saved);
   const remove = usePlaces((s) => s.remove);
   const setDestination = useBooking((s) => s.setDestination);
+  const tripStatus = useTrip((s) => s.status);
+
+  const book = (s: SavedPlace) => {
+    if (isLive(tripStatus)) {
+      Alert.alert('You’re already on a ride', 'Finish or cancel your current ride before booking another.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Open my ride', onPress: () => router.push('/trip') },
+      ]);
+      return;
+    }
+    setDestination(s.place);
+    router.push('/booking/ride');
+  };
 
   const open = (s: SavedPlace) =>
     Alert.alert(s.label, s.place.name, [
-      {
-        text: 'Book a ride here',
-        onPress: () => {
-          setDestination(s.place);
-          router.push('/booking/ride');
-        },
-      },
+      { text: 'Book a ride here', onPress: () => book(s) },
       { text: 'Remove', style: 'destructive', onPress: () => remove(s.label) },
       { text: 'Cancel', style: 'cancel' },
     ]);

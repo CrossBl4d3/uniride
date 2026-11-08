@@ -10,6 +10,7 @@ import { campuses } from '../../data/campuses';
 import { useUser } from '../../store/useUser';
 import { usePlaces } from '../../store/usePlaces';
 import { useCards, cardLabel } from '../../store/useCards';
+import { useUI } from '../../store/useUI';
 import { signOutEverywhere } from '../../store/session';
 import { formatPhone } from '../../utils/format';
 import { colors, space, radius, type } from '../../theme';
@@ -20,6 +21,7 @@ export default function Account() {
   const user = useUser();
   const saved = usePlaces((s) => s.saved);
   const cards = useCards((s) => s.cards);
+  const setSimulateOffline = useUI((s) => s.setSimulateOffline);
 
   const campus = campuses.find((c) => c.id === user.campusId);
   const isStudent = user.email.toLowerCase().endsWith('.edu.ng');
@@ -100,6 +102,23 @@ export default function Account() {
           <Text style={styles.logoutText}>Log out</Text>
         </Pressable>
       </View>
+
+      {/* __DEV__ is true while developing and false in the real app,
+          so this whole section disappears from the finished build by itself. */}
+      {__DEV__ && (
+        <>
+          <Text style={styles.overline}>Developer</Text>
+          <View style={styles.card}>
+            <ListRow
+              icon="wifi-off"
+              title="Simulate offline"
+              subtitle="Test the offline screen without Airplane mode"
+              divider={false}
+              onPress={() => setSimulateOffline(true)}
+            />
+          </View>
+        </>
+      )}
     </ScrollView>
   );
 }

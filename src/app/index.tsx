@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import Svg, { Defs, RadialGradient, Stop, Circle } from 'react-native-svg';
 import { AppIcon, Wordmark } from '../components/Brand';
 import { useUser } from '../store/useUser';
+import { useTrip } from '../store/useTrip';
 import { waitForSavedData } from '../store/session';
 import { colors, space, type } from '../theme';
 
@@ -15,9 +16,9 @@ export default function Splash() {
     let cancelled = false;
     const minimumShow = new Promise((resolve) => setTimeout(resolve, 1500));
 
-    // Wait for BOTH: the splash to show for 1.5s, and saved data to load.
     Promise.all([minimumShow, waitForSavedData()]).then(() => {
       if (cancelled) return;
+      useTrip.getState().resume(); // a ride that was live before the restart carries on
       router.replace(useUser.getState().signedIn ? '/home' : '/welcome');
     });
 
